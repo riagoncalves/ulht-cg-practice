@@ -773,5 +773,203 @@ namespace CG_OpenCV
                     (dataPtrWrite + nChan * width + step * height)[2] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[2]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[2]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[2]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[2]) / 9.0);
                 }
             }
+        }
+
+        public static void ConvertToBW(Emgu.CV.Image<Bgr, byte> img, int threshold) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            blue = (dataPtr + nChan * x + step * y)[0];
+                            green = (dataPtr + nChan * x + step * y)[1];
+                            red = (dataPtr + nChan * x + step * y)[2];
+
+                            gray = (byte)((blue + green + red) / 3.0);
+
+                            if(gray > threshold) {
+                                (dataPtr + nChan * x + step * y)[0] = 255;
+                                (dataPtr + nChan * x + step * y)[1] = 255;
+                                (dataPtr + nChan * x + step * y)[2] = 255;
+                            }
+                            else {
+                                (dataPtr + nChan * x + step * y)[0] = 0;
+                                (dataPtr + nChan * x + step * y)[1] = 0;
+                                (dataPtr + nChan * x + step * y)[2] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public static int[] Histogram_Gray(Emgu.CV.Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+                int[] h = new int[256]
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            blue = (dataPtr + nChan * x + step * y)[0];
+                            green = (dataPtr + nChan * x + step * y)[1];
+                            red = (dataPtr + nChan * x + step * y)[2];
+
+                            gray = (byte)((blue + green + red) / 3.0);
+
+                            h[gray]++;
+                        }
+                    }
+                    return h;
+                }
+            }
+        }
+
+        public static void ConvertToBW_Otsu(Emgu.CV.Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+                int[] h = Histogram_Gray(img);
+                int i, t, j;
+                int threshold = 0;
+                double sigma = 0, _sigma = 0;
+                double q1 = 0, q2 = 0, u1 = 0, u2 = 0;
+                double total = width * height;
+
+                for (t = 0; y < 256; t++)
+                {
+                    q1 = 0;
+                    a2 = 0;
+                    u1 = 0;
+                    u2 = 0;
+
+                    for(i = 0; i <= t; i++) {
+                        q1 += (h[i] / total);
+                        u1 += (i * h[i] / total);
+                    }
+                    
+                    u1 /= q1;
+
+                    for(j = 0; j < 256; j++) {
+                        q2 += (h[i] / total);
+                        u2 += (i * h[i] / total);
+                    }
+
+                    u2 /= q2;
+
+                    _sigma = q1 * q2 * ((u1 - u2) * (u1 - u2));
+
+                    if (sigma < _sigma) {
+                        sigma = _sigma;
+                        threshold = t;
+                    }
+                }
+                ConvertToBW(img, threshold);
+            }
+        }
+
+        public static int[,] Histogram_RGB(Emgu.CV.Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+                int[,] h = new int[3,256]
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            blue = (dataPtr + nChan * x + step * y)[0];
+                            green = (dataPtr + nChan * x + step * y)[1];
+                            red = (dataPtr + nChan * x + step * y)[2];
+
+                            h[0, blue]++;
+                            h[1, green]++;
+                            h[2, red]++;
+                        }
+                    }
+                    return h;
+                }
+            }
+        }
+
+        public static int[,] Histogram_All(Emgu.CV.Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+                int[,] h = new int[4,256]
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            blue = (dataPtr + nChan * x + step * y)[0];
+                            green = (dataPtr + nChan * x + step * y)[1];
+                            red = (dataPtr + nChan * x + step * y)[2];
+
+                            gray = (byte)((blue + green + red) / 3.0);
+
+                            h[0, blue]++;
+                            h[1, green]++;
+                            h[2, red]++;
+                            h[3, gray]++;
+                        }
+                    }
+                    return h;
+                }
+            }
+        }
     }
 }
