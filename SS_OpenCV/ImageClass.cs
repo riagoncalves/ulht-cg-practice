@@ -971,5 +971,106 @@ namespace CG_OpenCV
                 }
             }
         }
+
+
+        public static Image<Bgr, byte> Signs(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, out List<string[]> limitSign, out List<string[]> warningSign, out List<string[]> prohibitionSign, int level)
+        {
+            unsafe {
+                limitSign = new List<string[]>();
+                warningSign = new List<string[]>();
+                prohibitionSign = new List<string[]>();
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            double[] hsv = BGR_To_HSV((dataPtr + nChan * x + step * y)[0] / 255, (dataPtr + nChan * x + step * y)[1] / 255, (dataPtr + nChan * x + step * y)[2] / 255);
+
+                            if(hsv[1] > 0.4 && hsv[2] > 0.2 && ((hsv[0] >= 0 || hsv[0] <= 25) || (hsv[0] >= 335 && hsv[0] <= 360))) {
+                                (dataPtr + nChan * x + step * y)[0] = 255;
+                                (dataPtr + nChan * x + step * y)[1] = 255;
+                                (dataPtr + nChan * x + step * y)[2] = 255;
+                            }
+                            else {
+                                (dataPtr + nChan * x + step * y)[0] = 0;
+                                (dataPtr + nChan * x + step * y)[1] = 0;
+                                (dataPtr + nChan * x + step * y)[2] = 0;
+                            }
+                            
+                        }
+                    }
+                }
+
+
+                string[] dummy_vector1 = new string[5];
+                dummy_vector1[0] = "70";   // Speed limit
+                dummy_vector1[1] = "1160"; // Left-x
+                dummy_vector1[2] = "330";  // Top-y
+                dummy_vector1[3] = "1200"; // Right-x
+                dummy_vector1[4] = "350";  // Bottom-y
+
+                string[] dummy_vector2 = new string[5];
+                dummy_vector2[0] = "-1";  // value -1
+                dummy_vector2[1] = "669"; // Left-x
+                dummy_vector2[2] = "469"; // Top-y
+                dummy_vector2[3] = "680"; // Right-x
+                dummy_vector2[4] = "480"; // Bottom-y
+
+                string[] dummy_vector3 = new string[5];
+                dummy_vector3[0] = "-1";  // value -1
+                dummy_vector3[1] = "669"; // Left-x
+                dummy_vector3[2] = "469"; // Top-y
+                dummy_vector3[3] = "680"; // Right-x
+                dummy_vector3[4] = "480"; // Bottom-y
+
+                limitSign.Add(dummy_vector1);
+                warningSign.Add(dummy_vector2);
+                prohibitionSign.Add(dummy_vector3);
+
+
+                return img;
+            }
+        }
+
+        public static double[] BGR_To_HSV(double blue, double green, double red) {
+            double[] hsv = new double[3];
+            doub h = 0.0, 
+                s = 0.0, 
+                v = 0.0;
+            double max = Math.Max(red, Math.Max(blue, green));
+            double min = Math.Min(red, Math.Max(blue, green));
+
+            if((red > green && red > blue) && green >= blue) {
+                h = 60 * ((green - blue) / (max - min));
+            }
+            else if((red > green && red > blue) && green < blue) {
+                h = 60 * ((green - blue) / (max - min)) + 360;
+            }
+            else if(green > red && green > blue) {
+                h = 60 * ((blue - red) / (max - min)) + 120;
+            }
+            else if(blue > red && blue > green) {
+                h = 60 * ((red - green) / (max - min)) + 240;
+            }
+
+            hsv[0] = h;
+            hsv[1] = max == 0 ? 0 : (max - min) / max;
+            hsv[2] = max;
+
+            return hsv;
+        }
     }
 }
