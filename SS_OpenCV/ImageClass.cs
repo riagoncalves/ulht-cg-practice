@@ -991,13 +991,60 @@ namespace CG_OpenCV
                 int x, y;
                 int step = m.widthStep;
 
+                doHSV(img);
+                int[,] tagsMatrix = doTag(img);
+                Write_CSV(tagsMatrix);
+
+
+                // string[] dummy_vector1 = new string[5];
+                // dummy_vector1[0] = "70";   // Speed limit
+                // dummy_vector1[1] = "1160"; // Left-x
+                // dummy_vector1[2] = "330";  // Top-y
+                // dummy_vector1[3] = "1200"; // Right-x
+                // dummy_vector1[4] = "350";  // Bottom-y
+
+                // string[] dummy_vector2 = new string[5];
+                // dummy_vector2[0] = "-1";  // value -1
+                // dummy_vector2[1] = "669"; // Left-x
+                // dummy_vector2[2] = "469"; // Top-y
+                // dummy_vector2[3] = "680"; // Right-x
+                // dummy_vector2[4] = "480"; // Bottom-y
+
+                // string[] dummy_vector3 = new string[5];
+                // dummy_vector3[0] = "-1";  // value -1
+                // dummy_vector3[1] = "669"; // Left-x
+                // dummy_vector3[2] = "469"; // Top-y
+                // dummy_vector3[3] = "680"; // Right-x
+                // dummy_vector3[4] = "480"; // Bottom-y
+
+                // limitSign.Add(dummy_vector1);
+                // warningSign.Add(dummy_vector2);
+                // prohibitionSign.Add(dummy_vector3);
+
+
+                return img;
+            }
+        }
+
+        public static void doHSV(Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int x, y;
+                int step = m.widthStep;
+
                 if (nChan == 3)
                 {
                     for (y = 0; y < height; y++)
                     {
                         for (x = 0; x < width; x++)
                         {
-                            double[] hsv = BGR_To_HSV((dataPtr + nChan * x + step * y)[0] / 255, (dataPtr + nChan * x + step * y)[1] / 255, (dataPtr + nChan * x + step * y)[2] / 255);
+                            double[] hsv = BGR_To_HSV((dataPtr + nChan * x + step * y)[0] / 255.0, (dataPtr + nChan * x + step * y)[1] / 255.0, (dataPtr + nChan * x + step * y)[2] / 255.0);
 
                             if(hsv[1] > 0.4 && hsv[2] > 0.2 && ((hsv[0] >= 0 || hsv[0] <= 25) || (hsv[0] >= 335 && hsv[0] <= 360))) {
                                 (dataPtr + nChan * x + step * y)[0] = 255;
@@ -1008,40 +1055,10 @@ namespace CG_OpenCV
                                 (dataPtr + nChan * x + step * y)[0] = 0;
                                 (dataPtr + nChan * x + step * y)[1] = 0;
                                 (dataPtr + nChan * x + step * y)[2] = 0;
-                            }
-                            
+                            }   
                         }
                     }
                 }
-
-
-                string[] dummy_vector1 = new string[5];
-                dummy_vector1[0] = "70";   // Speed limit
-                dummy_vector1[1] = "1160"; // Left-x
-                dummy_vector1[2] = "330";  // Top-y
-                dummy_vector1[3] = "1200"; // Right-x
-                dummy_vector1[4] = "350";  // Bottom-y
-
-                string[] dummy_vector2 = new string[5];
-                dummy_vector2[0] = "-1";  // value -1
-                dummy_vector2[1] = "669"; // Left-x
-                dummy_vector2[2] = "469"; // Top-y
-                dummy_vector2[3] = "680"; // Right-x
-                dummy_vector2[4] = "480"; // Bottom-y
-
-                string[] dummy_vector3 = new string[5];
-                dummy_vector3[0] = "-1";  // value -1
-                dummy_vector3[1] = "669"; // Left-x
-                dummy_vector3[2] = "469"; // Top-y
-                dummy_vector3[3] = "680"; // Right-x
-                dummy_vector3[4] = "480"; // Bottom-y
-
-                limitSign.Add(dummy_vector1);
-                warningSign.Add(dummy_vector2);
-                prohibitionSign.Add(dummy_vector3);
-
-
-                return img;
             }
         }
 
@@ -1071,6 +1088,107 @@ namespace CG_OpenCV
             hsv[2] = max;
 
             return hsv;
+        }
+
+        public static int[,] doTag(Image<Bgr, byte> img) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                byte blue, green, red, gray;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int x, y;
+                int step = m.widthStep;
+                int [,] matrix = new int[height,width];
+                int num = 1:
+                bool changed = false,
+                     turn = true;
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            if((dataPtr + nChan * x + step * y)[0] == 255) {
+                                matrix[y,x] = num;
+                                num++;
+                            }
+                            else {
+                                matrix[y,x] = 0;
+                            }
+                        }
+                    }
+                }
+
+                do {
+                    changed = false;
+                    if(turn) {
+                        for (y = 1; y < height - 1; y++)
+                        {
+                            for (x = 1; x < width - 1; x++)
+                            {
+                                int lowerNum = 0;
+                                lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
+                                lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
+                                lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
+                                lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
+                                lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
+                                lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
+                                lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
+                                lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+                                if (lowerNum != 0 && matrix[y,x] != lowerNum) {
+                                    matrix[y,x] = lowerNum;
+                                    changed = true;
+                                    turn = false;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        for (y = height - 2; y > 0; y--)
+                        {
+                            for (x = width - 2; x > 0; x--)
+                            {
+                                int lowerNum = 0;
+                                lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
+                                lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
+                                lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
+                                lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
+                                lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
+                                lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
+                                lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
+                                lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+
+                                if (lowerNum != 0 && matrix[y,x] != lowerNum) {
+                                    matrix[y,x] = lowerNum;
+                                    changed = true;
+                                    turn = true;
+                                }
+                            }
+                        }
+                    }
+                } while(changed);
+
+                return matrix;
+            }
+        }
+
+        public static void Write_CSV(int[,] matrix) {
+            using (System.IO.StreamWriter outfile = new System.IO.StreamWriter(@"C:\Temp\tags.csv"))
+            {
+                for (int x = 0; x < matrix.GetUpperBound(0); x++)
+                {
+                    string content = "";
+                    for (int y = 0; y < matrix.GetUpperBound(1); y++)
+                    {
+                        content += matrix[x,y] + ",";
+                    }
+                    outfile.WriteLine(content);
+                }
+            }
         }
     }
 }
