@@ -1123,55 +1123,53 @@ namespace CG_OpenCV
                     }
                 }
 
-                do {
+                while(true) {
                     changed = false;
-                    if(turn) {
-                        for (y = 1; y < height - 1; y++)
+                    for (y = 1; y < height - 1; y++)
+                    {
+                        for (x = 1; x < width - 1; x++)
                         {
-                            for (x = 1; x < width - 1; x++)
-                            {
-                                int lowerNum = 0;
-                                lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
-                                lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
-                                lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
-                                lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
-                                lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
-                                lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
-                                lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
-                                lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
-                                if (lowerNum != 0 && matrix[y,x] != lowerNum) {
-                                    matrix[y,x] = lowerNum;
-                                    changed = true;
-                                    turn = false;
-                                }
+                            int lowerNum = 0;
+                            lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
+                            lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
+                            lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
+                            lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
+                            lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
+                            lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
+                            lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
+                            lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+                            if (lowerNum != 0 && matrix[y,x] != lowerNum) {
+                                matrix[y,x] = lowerNum;
+                                changed = true;
+                                turn = false;
                             }
                         }
                     }
-                    else {
-                        for (y = height - 2; y > 0; y--)
-                        {
-                            for (x = width - 2; x > 0; x--)
-                            {
-                                int lowerNum = 0;
-                                lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
-                                lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
-                                lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
-                                lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
-                                lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
-                                lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
-                                lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
-                                lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+                    
+                    if(!changed) break;
 
-                                if (lowerNum != 0 && matrix[y,x] != lowerNum) {
-                                    matrix[y,x] = lowerNum;
-                                    changed = true;
-                                    turn = true;
-                                }
+                    for (y = height - 2; y > 0; y--)
+                    {
+                        for (x = width - 2; x > 0; x--)
+                        {
+                            int lowerNum = 0;
+                            lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
+                            lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
+                            lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
+                            lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
+                            lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
+                            lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
+                            lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
+                            lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+
+                            if (lowerNum != 0 && matrix[y,x] != lowerNum) {
+                                matrix[y,x] = lowerNum;
+                                changed = true;
+                                turn = true;
                             }
                         }
                     }
-                } while(changed);
-
+                }
                 return matrix;
             }
         }
@@ -1179,15 +1177,174 @@ namespace CG_OpenCV
         public static void Write_CSV(int[,] matrix) {
             using (System.IO.StreamWriter outfile = new System.IO.StreamWriter(@"C:\Temp\tags.csv"))
             {
-                for (int x = 0; x < matrix.GetUpperBound(0); x++)
+                for (int y = 0; y < matrix.GetUpperBound(0); y++)
                 {
                     string content = "";
-                    for (int y = 0; y < matrix.GetUpperBound(1); y++)
+                    for (int x = 0; x < matrix.GetUpperBound(1); x++)
                     {
-                        content += matrix[x,y] + ",";
+                        content += matrix[y,x] + ",";
                     }
                     outfile.WriteLine(content);
                 }
+            }
+        }
+
+        public static List<int[]> square(int[,] matrix, int h, int w)
+        {
+            List<int> etiquetas = new List<int>();
+            List<int[]> posicoes = new List<int[]>();
+            int x, y;
+
+            for (y = 0; y < h - 1; y++)
+            {
+                for (x = 0; x < w - 1; x++)
+                {
+                    if (matrix[y,x] != 0 && !etiquetas.Contains(matrix[y,x])) {
+                        etiquetas.Add(matrix[y,x]);
+                    }
+                }
+            }
+
+            foreach (int etiqueta in etiquetas) {
+                int[] posicao = new int[5];
+                posicao[0] = etiqueta;
+                posicao[1] = 0; // x left
+                posicao[2] = 0; // x right
+                posicao[3] = 0; // y top
+                posicao[4] = 0; // y bottom
+
+                for (y = 0; y < h - 1; y++)
+                {
+                    for (x = 0; x < w - 1; x++)
+                    {
+                        if (matrix[y,x] == etiqueta) {
+                            if (posicao[1] > x) {
+                                posicao[1] = x;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                for (y = h - 2; y >= 0; y++)
+                {
+                    for (x = w - 2; x >= 0; x++)
+                    {
+                        if (matrix[y,x] == etiqueta) {
+                            if (posicao[2] < x) {
+                                posicao[2] = x;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                for (x = 0; x < w - 1; x++)
+                {
+                    for (y = 0; y < h - 1; y++)
+                    {
+                        if (matrix[y,x] == etiqueta) {
+                            if (posicao[3] > y) {
+                                posicao[3] = y;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                for (x = w - 2; x >= 0; x++)
+                {
+                    for (y = h - 2; y >= 0; y++)
+                    {
+                        if (matrix[y,x] == etiqueta) {
+                            if (posicao[4] < y) {
+                                posicao[4] = y;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return posicoes;
+        }
+
+        public static void getPositions(int[,] matrix) {
+            unsafe {
+
+                List<int> etiquetas = new List<int>;
+                List<int[]> posicoes = new List<int[]>;
+
+                for (y = 0; y < h; y++)
+                {
+                    for (x = 0; x < matrix.GetUpperBound(1); x++)
+                    {
+                        if (matrix[y,x] != 0 && !etiquetas.Contains(matrix[y,x])) {
+                            etiquetas.Add(matrix[y,x])
+                        }
+                    }
+                }
+
+                foreach (int etiqueta in etiquetas) {
+                    int[] posicao = new int[5];
+                    posicao[0] = etiqueta;
+                    posicao[1] = 0; // x left
+                    posicao[2] = 0; // x right
+                    posicao[3] = 0; // y top
+                    posicao[4] = 0; // y bottom
+
+                    for (y = 0; y < h; y++)
+                    {
+                        for (x = 0; x < matrix.GetUpperBound(1); x++)
+                        {
+                            if (matrix[y,x] == etiqueta) {
+                                if (posicao[1] > x) {
+                                    posicao[1] = x;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    for (y = h - 1; y >= 0; y++)
+                    {
+                        for (x = matrix.GetUpperBound(1) - 1; x >= 0; x++)
+                        {
+                            if (matrix[y,x] == etiqueta) {
+                                if (posicao[2] < x) {
+                                    posicao[2] = x;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    for (x = 0; x < matrix.GetUpperBound(1); x++)
+                    {
+                        for (y = 0; y < h; y++)
+                        {
+                            if (matrix[y,x] == etiqueta) {
+                                if (posicao[3] > y) {
+                                    posicao[3] = y;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    for (x = matrix.GetUpperBound(1) - 1; x >= 0; x++)
+                    {
+                        for (y = h - 1; y >= 0; y++)
+                        {
+                            if (matrix[y,x] == etiqueta) {
+                                if (posicao[4] < y) {
+                                    posicao[4] = y;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
         }
     }
