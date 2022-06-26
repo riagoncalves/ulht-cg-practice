@@ -999,6 +999,7 @@ namespace CG_OpenCV
                 List<int[]> corners = getPosicoes(tagsMatrix, height, width);
                 List<int[]> cleanList = clearNoise(corners, height, width);
                 List<Image<Bgr, byte>> listSignsOriginal = listSigns(imgCopy, cleanList);
+                doHSVBlack(listSignsOriginal);
                 //listsignsoriginal = list signs
                 //do hsv black
 
@@ -1351,6 +1352,56 @@ namespace CG_OpenCV
             */
 
             return signsList;
+        }
+
+        public static void doHSVBlack(List<Image<Bgr, byte>> listSigns)
+        {
+            unsafe
+            {
+                for (int i = 0; i < listSigns.Count; i++)
+                {
+                    MIplImage m = listSigns[i].MIplImage;
+                    byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
+                    int width = listSigns[i].Width;
+                    int height = listSigns[i].Height;
+                    int nChan = m.nChannels;
+                    int padding = m.widthStep - m.nChannels * m.width;
+                    int x, y;
+                    double blue, green, red;
+                    int step = m.widthStep;
+                    double[] hsv = new double[3];
+
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            red = (dataPtrWrite + nChan * x + step * y)[2];
+                            green = (dataPtrWrite + nChan * x + step * y)[1];
+                            blue = (dataPtrWrite + nChan * x + step * y)[0];
+
+                            hsv = BGR_To_HSV(red / 255.0, green / 255.0, blue / 255.0);
+
+                            if (hsv[2] < 0.4)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                                (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                                (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[0] = 0;
+                                (dataPtrWrite + nChan * x + step * y)[1] = 0;
+                                (dataPtrWrite + nChan * x + step * y)[2] = 0;
+                            }
+                        }
+                    }
+
+                    for (int j = 0; j < listSigns.Count; j++)
+                    {
+                        listSigns[j].Save(@"img_"+ j + ".jpg");
+                    }
+                }
+            }
         }
     }
 }
