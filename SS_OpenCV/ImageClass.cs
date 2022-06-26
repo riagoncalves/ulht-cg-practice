@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using Emgu.CV.Structure;
 using Emgu.CV;
+using System.IO;
+using System.Drawing;
 
 namespace CG_OpenCV
 {
@@ -522,7 +524,7 @@ namespace CG_OpenCV
                                 green = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
 
                                 aux = (int)Math.Round(((matrix[1, 1] + matrix[2, 1]) * ((dataPtrRead + nChan * x + step * y)[2]) + (matrix[1, 0] + matrix[2, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[2]) + (matrix[1, 2] + matrix[2, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[2]) + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[2] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2]) / matrixWeight);
-                                red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
+                                red = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
                             }
 
 
@@ -828,7 +830,7 @@ namespace CG_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int step = m.widthStep;
-                int[] h = new int[256]
+                int[] h = new int[256];
 
                 if (nChan == 3)
                 {
@@ -845,8 +847,8 @@ namespace CG_OpenCV
                             h[gray]++;
                         }
                     }
-                    return h;
                 }
+                return h;
             }
         }
 
@@ -869,10 +871,10 @@ namespace CG_OpenCV
                 double q1 = 0, q2 = 0, u1 = 0, u2 = 0;
                 double total = width * height;
 
-                for (t = 0; y < 256; t++)
+                for (t = 0; t < 256; t++)
                 {
                     q1 = 0;
-                    a2 = 0;
+                    q2 = 0;
                     u1 = 0;
                     u2 = 0;
 
@@ -913,7 +915,7 @@ namespace CG_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int step = m.widthStep;
-                int[,] h = new int[3,256]
+                int[,] h = new int[3,256];
 
                 if (nChan == 3)
                 {
@@ -930,8 +932,8 @@ namespace CG_OpenCV
                             h[2, red]++;
                         }
                     }
-                    return h;
                 }
+                return h;
             }
         }
 
@@ -947,7 +949,7 @@ namespace CG_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int step = m.widthStep;
-                int[,] h = new int[4,256]
+                int[,] h = new int[4,256];
 
                 if (nChan == 3)
                 {
@@ -967,8 +969,8 @@ namespace CG_OpenCV
                             h[3, gray]++;
                         }
                     }
-                    return h;
                 }
+                return h;
             }
         }
 
@@ -994,6 +996,15 @@ namespace CG_OpenCV
                 doHSV(img);
                 int[,] tagsMatrix = doTag(img);
                 Write_CSV(tagsMatrix);
+                List<int[]> corners = getPosicoes(tagsMatrix, height, width);
+                List<int[]> cleanList = clearNoise(corners, height, width);
+                List<Image<Bgr, byte>> listSignsOriginal = listSigns(imgCopy, cleanList);
+                //listsignsoriginal = list signs
+                //do hsv black
+
+                /*
+                    writecsv das etiquetas (for)
+                */
 
 
                 // string[] dummy_vector1 = new string[5];
@@ -1064,7 +1075,7 @@ namespace CG_OpenCV
 
         public static double[] BGR_To_HSV(double blue, double green, double red) {
             double[] hsv = new double[3];
-            doub h = 0.0, 
+            double h = 0.0, 
                 s = 0.0, 
                 v = 0.0;
             double max = Math.Max(red, Math.Max(blue, green));
@@ -1094,7 +1105,6 @@ namespace CG_OpenCV
             unsafe {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -1102,47 +1112,57 @@ namespace CG_OpenCV
                 int x, y;
                 int step = m.widthStep;
                 int [,] matrix = new int[height,width];
-                int num = 1:
-                bool changed = false,
-                     turn = true;
+                int num = 1;
+                bool changed = false;
 
-                if (nChan == 3)
+                for (y = 0; y < height; y++)
                 {
-                    for (y = 0; y < height; y++)
+                    for (x = 0; x < width; x++)
                     {
-                        for (x = 0; x < width; x++)
-                        {
-                            if((dataPtr + nChan * x + step * y)[0] == 255) {
-                                matrix[y,x] = num;
-                                num++;
-                            }
-                            else {
-                                matrix[y,x] = 0;
-                            }
+                        if((dataPtr + nChan * x + step * y)[0] == 255) {
+                            matrix[y,x] = num;
+                            num++;
+                        }
+                        else {
+                            matrix[y,x] = 0;
                         }
                     }
                 }
 
-                while(true) {
-                    changed = false;
+                do {
                     for (y = 1; y < height - 1; y++)
                     {
                         for (x = 1; x < width - 1; x++)
                         {
-                            int lowerNum = 0;
-                            lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
-                            lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
-                            lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
-                            lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
-                            lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
-                            lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
-                            lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
-                            lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
-                            if (lowerNum != 0 && matrix[y,x] != lowerNum) {
-                                matrix[y,x] = lowerNum;
-                                changed = true;
-                                turn = false;
-                            }
+                            if (matrix[y,x] == 0) continue;
+
+                            int aux = matrix[y,x];
+
+                            // Top Left
+                            matrix[y,x] = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : matrix[y,x];
+
+                            // Mid Left
+                            matrix[y,x] = matrix[y,x-1] != 0 && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : matrix[y,x];
+
+                            // Bot Left
+                            matrix[y,x] = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : matrix[y,x];
+                            
+                            // Top Center
+                            matrix[y,x] = matrix[y-1,x] != 0 && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : matrix[y,x];
+
+                            // Bot Center
+                            matrix[y,x] = matrix[y+1,x] != 0 && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : matrix[y,x];
+
+                            // Top Right
+                            matrix[y,x] = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : matrix[y,x];
+
+                            // Mid Right
+                            matrix[y,x] = matrix[y,x+1] != 0 && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : matrix[y,x];
+
+                            // Bot Right
+                            matrix[y,x] = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : matrix[y,x];
+
+                            changed = matrix[y,x] != aux;
                         }
                     }
                     
@@ -1152,30 +1172,45 @@ namespace CG_OpenCV
                     {
                         for (x = width - 2; x > 0; x--)
                         {
-                            int lowerNum = 0;
-                            lowerNum = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < lowerNum && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : lowerNum;
-                            lowerNum = matrix[y,x-1] != 0 && matrix[y,x-1] < lowerNum && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : lowerNum;
-                            lowerNum = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < lowerNum && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : lowerNum;
-                            lowerNum = matrix[y-1,x] != 0 && matrix[y-1,x] < lowerNum && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : lowerNum;
-                            lowerNum = matrix[y+1,x] != 0 && matrix[y+1,x] < lowerNum && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : lowerNum;
-                            lowerNum = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < lowerNum && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : lowerNum;
-                            lowerNum = matrix[y,x+1] != 0 && matrix[y,x+1] < lowerNum && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : lowerNum;
-                            lowerNum = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < lowerNum && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : lowerNum;
+                            if (matrix[y,x] == 0) continue;
 
-                            if (lowerNum != 0 && matrix[y,x] != lowerNum) {
-                                matrix[y,x] = lowerNum;
-                                changed = true;
-                                turn = true;
-                            }
+                            int aux = matrix[y,x];
+
+                            // Top Left
+                            matrix[y,x] = matrix[y-1,x-1] != 0 && matrix[y-1,x-1] < matrix[y,x] ? matrix[y-1,x-1] : matrix[y,x];
+
+                            // Mid Left
+                            matrix[y,x] = matrix[y,x-1] != 0 && matrix[y,x-1] < matrix[y,x] ? matrix[y,x-1] : matrix[y,x];
+
+                            // Bot Left
+                            matrix[y,x] = matrix[y+1,x-1] != 0 && matrix[y+1,x-1] < matrix[y,x] ? matrix[y+1,x-1] : matrix[y,x];
+                            
+                            // Top Center
+                            matrix[y,x] = matrix[y-1,x] != 0 && matrix[y-1,x] < matrix[y,x] ? matrix[y-1,x] : matrix[y,x];
+
+                            // Bot Center
+                            matrix[y,x] = matrix[y+1,x] != 0 && matrix[y+1,x] < matrix[y,x] ? matrix[y+1,x] : matrix[y,x];
+
+                            // Top Right
+                            matrix[y,x] = matrix[y-1,x+1] != 0 && matrix[y-1,x+1] < matrix[y,x] ? matrix[y-1,x+1] : matrix[y,x];
+
+                            // Mid Right
+                            matrix[y,x] = matrix[y,x+1] != 0 && matrix[y,x+1] < matrix[y,x] ? matrix[y,x+1] : matrix[y,x];
+
+                            // Bot Right
+                            matrix[y,x] = matrix[y+1,x+1] != 0 && matrix[y+1,x+1] < matrix[y,x] ? matrix[y+1,x+1] : matrix[y,x];
+
+                            changed = matrix[y,x] != aux;
                         }
                     }
-                }
+                } while(changed);
+
                 return matrix;
             }
         }
 
         public static void Write_CSV(int[,] matrix) {
-            using (System.IO.StreamWriter outfile = new System.IO.StreamWriter(@"C:\Temp\tags.csv"))
+            using (System.IO.StreamWriter outfile = new System.IO.StreamWriter(@"F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\CSV-Export\tags.csv"))
             {
                 for (int y = 0; y < matrix.GetUpperBound(0); y++)
                 {
@@ -1189,7 +1224,7 @@ namespace CG_OpenCV
             }
         }
 
-        public static List<int[]> square(int[,] matrix, int h, int w)
+        public static List<int[]> getPosicoes(int[,] matrix, int h, int w)
         {
             List<int> etiquetas = new List<int>();
             List<int[]> posicoes = new List<int[]>();
@@ -1226,9 +1261,9 @@ namespace CG_OpenCV
                     }
                 }
 
-                for (y = h - 2; y >= 0; y++)
+                for (y = h - 2; y > 0; y--)
                 {
-                    for (x = w - 2; x >= 0; x++)
+                    for (x = w - 2; x > 0; x--)
                     {
                         if (matrix[y,x] == etiqueta) {
                             if (posicao[2] < x) {
@@ -1252,9 +1287,9 @@ namespace CG_OpenCV
                     }
                 }
 
-                for (x = w - 2; x >= 0; x++)
+                for (x = w - 2; x > 0; x--)
                 {
-                    for (y = h - 2; y >= 0; y++)
+                    for (y = h - 2; y > 0; y--)
                     {
                         if (matrix[y,x] == etiqueta) {
                             if (posicao[4] < y) {
@@ -1264,88 +1299,58 @@ namespace CG_OpenCV
                         }
                     }
                 }
+
+                posicoes.Add(posicao);
             }
             return posicoes;
         }
 
-        public static void getPositions(int[,] matrix) {
-            unsafe {
+        public static List<int[]> clearNoise(List<int[]> corners, int h, int w)
+        {
+            List<int[]> cleanList = new List<int[]>();
 
-                List<int> etiquetas = new List<int>;
-                List<int[]> posicoes = new List<int[]>;
+            double area = 0;
+            double left, top;
 
-                for (y = 0; y < h; y++)
+            for (int i = 0; i < corners.Count; i++)
+            {
+                left = Math.Abs(corners[i][4] - corners[i][3]);
+                top = Math.Abs(corners[i][2] - corners[i][1]);
+                if (left * top > area)
                 {
-                    for (x = 0; x < matrix.GetUpperBound(1); x++)
-                    {
-                        if (matrix[y,x] != 0 && !etiquetas.Contains(matrix[y,x])) {
-                            etiquetas.Add(matrix[y,x])
-                        }
-                    }
+                    area = left * top;
                 }
-
-                foreach (int etiqueta in etiquetas) {
-                    int[] posicao = new int[5];
-                    posicao[0] = etiqueta;
-                    posicao[1] = 0; // x left
-                    posicao[2] = 0; // x right
-                    posicao[3] = 0; // y top
-                    posicao[4] = 0; // y bottom
-
-                    for (y = 0; y < h; y++)
-                    {
-                        for (x = 0; x < matrix.GetUpperBound(1); x++)
-                        {
-                            if (matrix[y,x] == etiqueta) {
-                                if (posicao[1] > x) {
-                                    posicao[1] = x;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    for (y = h - 1; y >= 0; y++)
-                    {
-                        for (x = matrix.GetUpperBound(1) - 1; x >= 0; x++)
-                        {
-                            if (matrix[y,x] == etiqueta) {
-                                if (posicao[2] < x) {
-                                    posicao[2] = x;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    for (x = 0; x < matrix.GetUpperBound(1); x++)
-                    {
-                        for (y = 0; y < h; y++)
-                        {
-                            if (matrix[y,x] == etiqueta) {
-                                if (posicao[3] > y) {
-                                    posicao[3] = y;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    for (x = matrix.GetUpperBound(1) - 1; x >= 0; x++)
-                    {
-                        for (y = h - 1; y >= 0; y++)
-                        {
-                            if (matrix[y,x] == etiqueta) {
-                                if (posicao[4] < y) {
-                                    posicao[4] = y;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
             }
+
+            for (int i = 0; i < corners.Count; i++)
+            {
+                left = Math.Abs(corners[i][4] - corners[i][3]);
+                top = Math.Abs(corners[i][2] - corners[i][1]);
+                Console.WriteLine((left * top / (h * w)) * 100.0);
+                if ((left * top / area) * 100.0 > 17 && (left * top / (h * w)) * 100.0 > 0.1)
+                {
+                    cleanList.Add(corners[i]);
+                }
+            }
+            return cleanList;
+        }
+
+        public static List<Image<Bgr, byte>> listSigns(Image<Bgr, byte> img, List<int[]> signs)
+        {
+            List<Image<Bgr, byte>> signsList = new List<Image<Bgr, byte>>();
+
+            for (int i = 0; i < signs.Count; i++)
+            {
+                Rectangle rectangulo = new Rectangle(signs[i][1], signs[i][3], signs[i][2] - signs[i][1], signs[i][4] - signs[i][3]);
+                Image<Bgr, byte> img_ = img.Copy(rectangulo);
+                signsList.Add(img_);
+            }
+           
+            /*
+            img_.Save(@"img_.jpg");
+            */
+
+            return signsList;
         }
     }
 }

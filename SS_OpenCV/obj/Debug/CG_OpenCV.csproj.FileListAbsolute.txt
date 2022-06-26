@@ -37,3 +37,17 @@ C:\Users\user\Desktop\Computacao Grafica\CG_OpenCV_Base\SS_OpenCV\obj\Debug\CG_O
 C:\Users\user\Desktop\Computacao Grafica\CG_OpenCV_Base\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.CopyComplete
 C:\Users\user\Desktop\Computacao Grafica\CG_OpenCV_Base\SS_OpenCV\obj\Debug\CG_OpenCV.exe
 C:\Users\user\Desktop\Computacao Grafica\CG_OpenCV_Base\SS_OpenCV\obj\Debug\CG_OpenCV.pdb
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.AssemblyReference.cache
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.SuggestedBindingRedirects.cache
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.AuthorsForm.resources
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.InputBox.resources
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.MainForm.resources
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.Properties.Resources.resources
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.GenerateResource.cache
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.CoreCompileInputs.cache
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.exe
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.pdb
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\bin\Debug\CG_OpenCV.exe.config
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\bin\Debug\CG_OpenCV.exe
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\bin\Debug\CG_OpenCV.pdb
+F:\Faculdade\Trabalhos\2º Ano\2º Semestre\Computação Gráfica\ulht-cg-practice\SS_OpenCV\obj\Debug\CG_OpenCV.csproj.CopyComplete
