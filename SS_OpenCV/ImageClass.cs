@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Emgu.CV.Structure;
 using Emgu.CV;
+using System.Linq;
 using System.IO;
 using System.Drawing;
 
@@ -254,24 +255,22 @@ namespace CG_OpenCV
         {
             unsafe
             {
-                // direct access to the image memory(sequencial)
-                // direcion top left -> bottom right
 
                 MIplImage m = img.MIplImage;
                 MIplImage mCopy = imgCopy.MIplImage;
-                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer();
+                byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer();
                 byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int xo, yo;
                 int step = m.widthStep;
 
-                if (nChan == 3) // image in RGB
+                if (nChan == 3)
                 {
                     for (y = 0; y < height; y++)
                     {
@@ -356,105 +355,255 @@ namespace CG_OpenCV
             }
         }
 
+        public static void Scale_point_xy(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, float scaleFactor, int centerX, int centerY)
+        {
+            unsafe
+            {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer();
+
+                byte red, green, blue;
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y, xo, yo;
+                int step = m.widthStep;
+                int stepCopy = m.widthStep;
+
+                if (nChan == 3)
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            xo = (int)Math.Round((x - width / 2) / scaleFactor + centerX);
+                            yo = (int)Math.Round((y - height / 2) / scaleFactor + centerY);
+
+                            if (xo >= 0 && xo < width && yo >= 0 && yo < height)
+                            {
+                                blue = (dataPtrRead + nChan * xo + stepCopy * yo)[0];
+                                green = (dataPtrRead + nChan * xo + stepCopy * yo)[1];
+                                red = (dataPtrRead + nChan * xo + stepCopy * yo)[2];
+                            }
+                            else
+                            {
+                                red = green = blue = 0;
+                            }
+
+                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
+                            (dataPtrWrite + nChan * x + step * y)[1] = green;
+                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                        }
+                    }
+                }
+            }
+        }
+
+
         public static void Mean(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
         {
             unsafe
             {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
                 MIplImage m = img.MIplImage;
-                MIplImage mCopy = imgCopy.MIplImage;
-                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer();
 
                 int width = img.Width;
                 int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
-                int xo, yo;
                 int step = m.widthStep;
+                int stepCopy = m.widthStep;
 
-                if (nChan == 3) // image in RGB
+                if (nChan == 3)
                 {
+                    /* Canto superior esquerdo */
+                    x = 0;
+                    y = 0;
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[0] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[1] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[2] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]) / 9.0);
+
+                    /* Canto superior direito */
+                    x = width - 1;
+                    y = 0;
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[0] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[1] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[2] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) / 9.0);
+
+                    /* Canto inferior esquerdo */
+                    x = 0;
+                    y = height - 1;
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[0] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[1] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[2] * 4 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * 2 + (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) / 9.0);
+
+                    /* Canto inferior direito */
+                    x = width - 1;
+                    y = height - 1;
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[0] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[1] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) / 9.0);
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round(((dataPtrRead + nChan * (x) + stepCopy * (y))[2] * 4 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * 2 + (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * 2 + (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) / 9.0);
+
+                    /* Bordas verticais */
                     for (y = 1; y < height - 1; y++)
                     {
+                        /* Borda esquerda */
+                        x = 0;
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[0] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * 2 +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) / 9.0);
 
-                        for (x = 1; x < width - 1; x++)
-                        {
-                            blue = (byte)Math.Round(((dataPtrRead + nChan * x + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + (dataPtrRead + nChan * x + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x - 1) + step * y)[0] + (dataPtrRead + nChan * (x + 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) / 9.0);
-                            green = (byte)Math.Round(((dataPtrRead + nChan * x + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + (dataPtrRead + nChan * x + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * y)[1] + (dataPtrRead + nChan * (x + 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) / 9.0);
-                            red = (byte)Math.Round(((dataPtrRead + nChan * x + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + (dataPtrRead + nChan * x + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * y)[2] + (dataPtrRead + nChan * (x + 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) / 9.0);
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[1] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * 2 +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) / 9.0);
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
-                        }
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[2] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * 2 +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]) / 9.0);
+
+                        /* Borda direita */
+                        x = width - 1;
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[0] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * 2 +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) / 9.0);
+
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[1] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * 2 +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) / 9.0);
+
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[2] * 2 +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * 2 +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) / 9.0);
+
                     }
 
-                    for (y = 0; y < height; y = height - 1)
+                    /* Bordas horizontais */
+                    for (x = 1; x < width - 1; x++)
                     {
-                        for (x = 1; x < width - 1; x++)
-                        {
-                            if(y == 0)
-                            {
-                                blue = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[0]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[0]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[0]) + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) / 9.0);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[1]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[1]) + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) / 9.0);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[2]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[2]) + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) / 9.0);
-                            }
-                            else {
-                                blue = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[0]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[0]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[0]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + (dataPtrRead + nChan * x + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0]) / 9.0);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[1]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[1]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + (dataPtrRead + nChan * x + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1]) / 9.0);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * (x - 1) + step * y)[2]) + 2 * ((dataPtrRead + nChan * (x + 1) + step * y)[2]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + (dataPtrRead + nChan * x + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2]) / 9.0);
-                            }
+                        /* Borda superior */
+                        y = 0;
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) / 9.0);
 
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) / 9.0);
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
-                        }
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]) / 9.0);
+
+                        /* Borda inferior */
+                        y = height - 1;
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) / 9.0);
+
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) / 9.0);
+
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (2) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) / 9.0);
+
                     }
 
                     for (y = 1; y < height - 1; y++)
                     {
-                        for (x = 0; x < width; x = width - 1)
+                        for (x = 1; x < width - 1; x++)
                         {
-                            if (x == 0)
-                            {
-                                blue = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[0]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[0]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[0]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * y)[0]) / 9.0);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[1]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[1]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * y)[1]) / 9.0);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[2]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[2]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * y)[2]) / 9.0);
-                            }
-                            else
-                            {
-                                blue = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[0]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[0]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[0]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + (dataPtrRead + nChan * (x - 1) + step * y)[0]) / 9.0);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[1]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[1]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + (dataPtrRead + nChan * (x - 1) + step * y)[1]) / 9.0);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[2]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[2]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + (dataPtrRead + nChan * (x - 1) + step * y)[2]) / 9.0);
-                            }
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[0] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) / 9.0);
 
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) / 9.0);
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[2] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]) / 9.0);
                         }
                     }
-
-
-
-                    (dataPtrWrite)[0] = (byte)Math.Round((4 * ((dataPtrRead)[0]) + 2 * ((dataPtrRead + nChan)[0]) + 2 * ((dataPtrRead + step * 1)[0]) + (dataPtrRead + nChan + step)[0]) / 9.0);
-                    (dataPtrWrite)[1] = (byte)Math.Round((4 * ((dataPtrRead)[1]) + 2 * ((dataPtrRead + nChan)[1]) + 2 * ((dataPtrRead + step * 1)[1]) + (dataPtrRead + nChan + step)[1]) / 9.0);
-                    (dataPtrWrite)[2] = (byte)Math.Round((4 * ((dataPtrRead)[2]) + 2 * ((dataPtrRead + nChan)[2]) + 2 * ((dataPtrRead + step * 1)[2]) + (dataPtrRead + nChan + step)[2]) / 9.0);
-
-                    (dataPtrWrite + nChan * width)[0] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[0]) + 2 * ((dataPtrRead + nChan * (width - 1))[0]) + 2 * ((dataPtrRead + nChan * width + step)[0]) + (dataPtrRead + nChan * (width - 1) + step)[0]) / 9.0);
-                    (dataPtrWrite + nChan * width)[1] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[1]) + 2 * ((dataPtrRead + nChan * (width - 1))[1]) + 2 * ((dataPtrRead + nChan * width + step)[1]) + (dataPtrRead + nChan * (width - 1) + step)[1]) / 9.0);
-                    (dataPtrWrite + nChan * width)[2] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[2]) + 2 * ((dataPtrRead + nChan * (width - 1))[2]) + 2 * ((dataPtrRead + nChan * width + step)[2]) + (dataPtrRead + nChan * (width - 1) + step)[2]) / 9.0);
-
-                    (dataPtrWrite + step * height)[0] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[0]) + 2 * ((dataPtrRead + step * (height - 1))[0]) + 2 * ((dataPtrRead + step * height + nChan)[0]) + (dataPtrRead + step * (height - 1) + nChan)[0]) / 9.0);
-                    (dataPtrWrite + step * height)[1] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[1]) + 2 * ((dataPtrRead + step * (height - 1))[1]) + 2 * ((dataPtrRead + step * height + nChan)[1]) + (dataPtrRead + step * (height - 1) + nChan)[1]) / 9.0);
-                    (dataPtrWrite + step * height)[2] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[2]) + 2 * ((dataPtrRead + step * (height - 1))[2]) + 2 * ((dataPtrRead + step * height + nChan)[2]) + (dataPtrRead + step * (height - 1) + nChan)[2]) / 9.0);
-
-                    (dataPtrWrite + nChan * width + step * height)[0] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[0]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[0]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[0]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[0]) / 9.0);
-                    (dataPtrWrite + nChan * width + step * height)[1] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[1]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[1]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[1]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[1]) / 9.0);
-                    (dataPtrWrite + nChan * width + step * height)[2] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[2]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[2]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[2]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[2]) / 9.0);
                 }
             }
         }
@@ -463,156 +612,538 @@ namespace CG_OpenCV
         {
             unsafe
             {
-                MIplImage m = img.MIplImage;
-                MIplImage mCopy = imgCopy.MIplImage;
-                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
 
+                MIplImage m = img.MIplImage;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer();
+
+                int red, green, blue;
                 int width = img.Width;
                 int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
-                int xo, yo;
                 int step = m.widthStep;
-                int aux;
+                int stepCopy = m.widthStep;
 
-                if (nChan == 3) // image in RGB
+                if (nChan == 3)
                 {
+                    /* Canto superior esquerdo */
+                    x = 0;
+                    y = 0;
+                    blue = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[0, 0] + matrix[0, 1] + matrix[1, 0] + matrix[1, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (matrix[0, 2] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * (matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] * matrix[2, 2]) / matrixWeight);
+
+                    green = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[0, 0] + matrix[0, 1] + matrix[1, 0] + matrix[1, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (matrix[0, 2] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * (matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] * matrix[2, 2]) / matrixWeight);
+
+                    red = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[0, 0] + matrix[0, 1] + matrix[1, 0] + matrix[1, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (matrix[0, 2] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * (matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] * matrix[2, 2]) / matrixWeight);
+
+                    if (blue < 0)
+                    {
+                        blue = 0;
+                    }
+                    else if (blue > 255)
+                    {
+                        blue = 255;
+                    }
+
+                    if (green < 0)
+                    {
+                        green = 0;
+                    }
+                    else if (green > 255)
+                    {
+                        green = 255;
+                    }
+
+                    if (red < 0)
+                    {
+                        red = 0;
+                    }
+                    else if (red > 255)
+                    {
+                        red = 255;
+                    }
+
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                    /* Canto superior direito */
+                    x = width - 1;
+                    y = 0;
+                    blue = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[0, 1] + matrix[0, 2] + matrix[1, 1] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (matrix[0, 0] + matrix[1, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * (matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] * matrix[2, 0]) / matrixWeight);
+
+                    green = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[0, 1] + matrix[0, 2] + matrix[1, 1] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (matrix[0, 0] + matrix[1, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * (matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] * matrix[2, 0]) / matrixWeight);
+
+                    red = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[0, 1] + matrix[0, 2] + matrix[1, 1] + matrix[1, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (matrix[0, 0] + matrix[1, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * (matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] * matrix[2, 0]) / matrixWeight);
+
+                    if (blue < 0)
+                    {
+                        blue = 0;
+                    }
+                    else if (blue > 255)
+                    {
+                        blue = 255;
+                    }
+
+                    if (green < 0)
+                    {
+                        green = 0;
+                    }
+                    else if (green > 255)
+                    {
+                        green = 255;
+                    }
+
+                    if (red < 0)
+                    {
+                        red = 0;
+                    }
+                    else if (red > 255)
+                    {
+                        red = 255;
+                    }
+
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                    /* Canto inferior esquerdo */
+                    x = 0;
+                    y = height - 1;
+                    blue = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[1, 0] + matrix[1, 1] + matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (matrix[1, 2] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * (matrix[0, 0] + matrix[0, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] * matrix[0, 2]) / matrixWeight);
+
+                    green = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[1, 0] + matrix[1, 1] + matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (matrix[1, 2] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * (matrix[0, 0] + matrix[0, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] * matrix[0, 2]) / matrixWeight);
+
+                    red = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[1, 0] + matrix[1, 1] + matrix[2, 0] + matrix[2, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (matrix[1, 2] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * (matrix[0, 0] + matrix[0, 1]) +
+                        (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] * matrix[0, 2]) / matrixWeight);
+
+                    if (blue < 0)
+                    {
+                        blue = 0;
+                    }
+                    else if (blue > 255)
+                    {
+                        blue = 255;
+                    }
+
+                    if (green < 0)
+                    {
+                        green = 0;
+                    }
+                    else if (green > 255)
+                    {
+                        green = 255;
+                    }
+
+                    if (red < 0)
+                    {
+                        red = 0;
+                    }
+                    else if (red > 255)
+                    {
+                        red = 255;
+                    }
+
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                    /* Canto inferior direito */
+                    x = width - 1;
+                    y = height - 1;
+                    blue = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[1, 1] + matrix[1, 2] + matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (matrix[1, 0] + matrix[2, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * (matrix[0, 1] + matrix[0, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] * matrix[0, 0]) / matrixWeight);
+
+                    green = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[1, 1] + matrix[1, 2] + matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (matrix[1, 0] + matrix[2, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * (matrix[0, 1] + matrix[0, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] * matrix[0, 0]) / matrixWeight);
+
+                    red = (int)Math.Round((
+                        (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[1, 1] + matrix[1, 2] + matrix[2, 1] + matrix[2, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (matrix[1, 0] + matrix[2, 0]) +
+                        (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * (matrix[0, 1] + matrix[0, 2]) +
+                        (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] * matrix[0, 0]) / matrixWeight);
+
+                    if (blue < 0)
+                    {
+                        blue = 0;
+                    }
+                    else if (blue > 255)
+                    {
+                        blue = 255;
+                    }
+
+                    if (green < 0)
+                    {
+                        green = 0;
+                    }
+                    else if (green > 255)
+                    {
+                        green = 255;
+                    }
+
+                    if (red < 0)
+                    {
+                        red = 0;
+                    }
+                    else if (red > 255)
+                    {
+                        red = 255;
+                    }
+
+                    (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                    (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                    (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                    /* Bordas verticais */
                     for (y = 1; y < height - 1; y++)
                     {
+                        /* Borda esquerda */
+                        x = 0;
+                        blue = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * (matrix[0, 0] + matrix[0, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[0] * (matrix[1, 0] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * (matrix[2, 0] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] * matrix[0, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * matrix[1, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] * matrix[2, 2]) / matrixWeight);
 
-                        for (x = 1; x < width - 1; x++)
+                        green = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * (matrix[0, 0] + matrix[0, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[1] * (matrix[1, 0] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * (matrix[2, 0] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] * matrix[0, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * matrix[1, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] * matrix[2, 2]) / matrixWeight);
+
+                        red = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * (matrix[0, 0] + matrix[0, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[2] * (matrix[1, 0] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * (matrix[2, 0] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] * matrix[0, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * matrix[1, 2] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] * matrix[2, 2]) / matrixWeight);
+
+                        if (blue < 0)
                         {
-                            aux = (int)Math.Round((matrix[1,1] * (dataPtrRead + nChan * x + step * y)[0] + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[0] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + matrix[1, 0] * (dataPtrRead + nChan * (x - 1) + step * y)[0] + matrix[1, 2] * (dataPtrRead + nChan * (x + 1) + step * y)[0] + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[0] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) / matrixWeight);
-                            blue = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-                            
-                            aux = (int)Math.Round((matrix[1, 1] * (dataPtrRead + nChan * x + step * y)[1] + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[1] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + matrix[1, 0] * (dataPtrRead + nChan * (x - 1) + step * y)[1] + matrix[1, 2] * (dataPtrRead + nChan * (x + 1) + step * y)[1] + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[1] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) / matrixWeight);
-                            green = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                            aux = (int)Math.Round((matrix[1, 1] * (dataPtrRead + nChan * x + step * y)[2] + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[2] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + matrix[1, 0] * (dataPtrRead + nChan * (x - 1) + step * y)[2] + matrix[1, 2] * (dataPtrRead + nChan * (x + 1) + step * y)[2] + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[2] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) / matrixWeight);                            
-                            red = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            blue = 0;
                         }
+                        else if (blue > 255)
+                        {
+                            blue = 255;
+                        }
+
+                        if (green < 0)
+                        {
+                            green = 0;
+                        }
+                        else if (green > 255)
+                        {
+                            green = 255;
+                        }
+
+                        if (red < 0)
+                        {
+                            red = 0;
+                        }
+                        else if (red > 255)
+                        {
+                            red = 255;
+                        }
+
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                        /* Borda direita */
+                        x = width - 1;
+                        blue = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * (matrix[0, 1] + matrix[0, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[0] * (matrix[1, 1] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * (matrix[2, 1] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * matrix[1, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] * matrix[2, 0]) / matrixWeight);
+
+                        green = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * (matrix[0, 1] + matrix[0, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[1] * (matrix[1, 1] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * (matrix[2, 1] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * matrix[1, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] * matrix[2, 0]) / matrixWeight);
+
+                        red = (int)Math.Round((
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * (matrix[0, 1] + matrix[0, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * y)[2] * (matrix[1, 1] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * (matrix[2, 1] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * matrix[1, 0] +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] * matrix[2, 0]) / matrixWeight);
+
+                        if (blue < 0)
+                        {
+                            blue = 0;
+                        }
+                        else if (blue > 255)
+                        {
+                            blue = 255;
+                        }
+
+                        if (green < 0)
+                        {
+                            green = 0;
+                        }
+                        else if (green > 255)
+                        {
+                            green = 255;
+                        }
+
+                        if (red < 0)
+                        {
+                            red = 0;
+                        }
+                        else if (red > 255)
+                        {
+                            red = 255;
+                        }
+
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
                     }
 
-                    for (y = 0; y < height; y = height - 1)
+                    /* Bordas horizontais */
+                    for (x = 1; x < width - 1; x++)
                     {
-                        for (x = 1; x < width - 1; x++)
+                        /* Borda superior */
+                        y = 0;
+                        blue = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (matrix[0, 0] + matrix[1, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[0, 1] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (matrix[0, 2] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] * matrix[2, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * matrix[2, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] * matrix[2, 2]) / matrixWeight);
+
+                        green = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (matrix[0, 0] + matrix[1, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[0, 1] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (matrix[0, 2] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] * matrix[2, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * matrix[2, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] * matrix[2, 2]) / matrixWeight);
+
+                        red = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (matrix[0, 0] + matrix[1, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[0, 1] + matrix[1, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (matrix[0, 2] + matrix[1, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] * matrix[2, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * matrix[2, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] * matrix[2, 2]) / matrixWeight);
+
+                        if (blue < 0)
                         {
-                            if (y == 0)
-                            {
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[0, 1]) * ((dataPtrRead + nChan * x + step * y)[0]) + (matrix[1, 0] + matrix[0, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[0]) + (matrix[1, 2] + matrix[0, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[0]) + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[0] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) / matrixWeight);
-                                blue = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[0, 1]) * ((dataPtrRead + nChan * x + step * y)[1]) + (matrix[1, 0] + matrix[0, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[1]) + (matrix[1, 2] + matrix[0, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[1]) + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[1] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) / matrixWeight);
-                                green = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[0, 1]) * ((dataPtrRead + nChan * x + step * y)[2]) + (matrix[1, 0] + matrix[0, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[2]) + (matrix[1, 2] + matrix[0, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[2]) + matrix[2, 0] * (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + matrix[2, 1] * (dataPtrRead + nChan * x + step * (y + 1))[2] + matrix[2, 2] * (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) / matrixWeight);
-                                red = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-                            }
-                            else
-                            {
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[2, 1]) * ((dataPtrRead + nChan * x + step * y)[0]) + (matrix[1, 0] + matrix[2, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[0]) + (matrix[1, 2] + matrix[2, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[0]) + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[0] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0]) / matrixWeight);
-                                blue = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[2, 1]) * ((dataPtrRead + nChan * x + step * y)[1]) + (matrix[1, 0] + matrix[2, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[1]) + (matrix[1, 2] + matrix[2, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[1]) + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[1] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1]) / matrixWeight);
-                                green = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-
-                                aux = (int)Math.Round(((matrix[1, 1] + matrix[2, 1]) * ((dataPtrRead + nChan * x + step * y)[2]) + (matrix[1, 0] + matrix[2, 0]) * ((dataPtrRead + nChan * (x - 1) + step * y)[2]) + (matrix[1, 2] + matrix[2, 2]) * ((dataPtrRead + nChan * (x + 1) + step * y)[2]) + matrix[0, 0] * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + matrix[0, 1] * (dataPtrRead + nChan * x + step * (y - 1))[2] + matrix[0, 2] * (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2]) / matrixWeight);
-                                red = (byte)(aux > 255 ? 255 : aux < 0 ? 0 : aux);
-                            }
-
-
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            blue = 0;
                         }
+                        else if (blue > 255)
+                        {
+                            blue = 255;
+                        }
+
+                        if (green < 0)
+                        {
+                            green = 0;
+                        }
+                        else if (green > 255)
+                        {
+                            green = 255;
+                        }
+
+                        if (red < 0)
+                        {
+                            red = 0;
+                        }
+                        else if (red > 255)
+                        {
+                            red = 255;
+                        }
+
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
+
+                        /* Borda inferior */
+                        y = height - 1;
+                        blue = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * (matrix[1, 0] + matrix[2, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * (matrix[1, 1] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * (matrix[1, 2] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * matrix[0, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] * matrix[0, 2]) / matrixWeight);
+
+                        green = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * (matrix[1, 0] + matrix[2, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * (matrix[1, 1] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * (matrix[1, 2] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * matrix[0, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] * matrix[0, 2]) / matrixWeight);
+
+                        red = (int)Math.Round((
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * (matrix[1, 0] + matrix[2, 0]) +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * (matrix[1, 1] + matrix[2, 1]) +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * (matrix[1, 2] + matrix[2, 2]) +
+                            (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] * matrix[0, 0] +
+                            (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * matrix[0, 1] +
+                            (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] * matrix[0, 2]) / matrixWeight);
+
+                        if (blue < 0)
+                        {
+                            blue = 0;
+                        }
+                        else if (blue > 255)
+                        {
+                            blue = 255;
+                        }
+
+                        if (green < 0)
+                        {
+                            green = 0;
+                        }
+                        else if (green > 255)
+                        {
+                            green = 255;
+                        }
+
+                        if (red < 0)
+                        {
+                            red = 0;
+                        }
+                        else if (red > 255)
+                        {
+                            red = 255;
+                        }
+
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
                     }
 
                     for (y = 1; y < height - 1; y++)
                     {
-                        for (x = 0; x < width; x = width - 1)
+                        for (x = 1; x < width - 1; x++)
                         {
-                            if (x == 0)
+                            blue = (int)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] * matrix[0, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] * matrix[0, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] * matrix[0, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] * matrix[1, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[0] * matrix[1, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] * matrix[1, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] * matrix[2, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] * matrix[2, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] * matrix[2, 2]) / matrixWeight);
+
+                            green = (int)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] * matrix[0, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] * matrix[0, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] * matrix[0, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] * matrix[1, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[1] * matrix[1, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] * matrix[1, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] * matrix[2, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] * matrix[2, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] * matrix[2, 2]) / matrixWeight);
+
+                            red = (int)Math.Round((
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] * matrix[0, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] * matrix[0, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] * matrix[0, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] * matrix[1, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y))[2] * matrix[1, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] * matrix[1, 2] +
+                                (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] * matrix[2, 0] +
+                                (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] * matrix[2, 1] +
+                                (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] * matrix[2, 2]) / matrixWeight);
+
+
+                            if (blue < 0)
                             {
-                                blue = (byte)Math.Round(((matrix[1, 1] + matrix[1, 0]) * ((dataPtrRead + nChan * x + step * y)[0]) + (matrix[0, 1] + matrix[0, 0]) * ((dataPtrRead + nChan * x + step * (y - 1))[0]) + (matrix[2, 1] + matrix[2, 0]) * ((dataPtrRead + nChan * x + step * (y + 1))[0]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * y)[0]) / matrixWeight);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[1]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[1]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * y)[1]) / matrixWeight);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[2]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[2]) + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * y)[2]) / matrixWeight);
+                                blue = 0;
                             }
-                            else
+                            else if (blue > 255)
                             {
-                                blue = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[0]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[0]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[0]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + (dataPtrRead + nChan * (x - 1) + step * y)[0]) / matrixWeight);
-                                green = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[1]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[1]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[1]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + (dataPtrRead + nChan * (x - 1) + step * y)[1]) / matrixWeight);
-                                red = (byte)Math.Round((2 * ((dataPtrRead + nChan * x + step * y)[2]) + 2 * ((dataPtrRead + nChan * x + step * (y - 1))[2]) + 2 * ((dataPtrRead + nChan * x + step * (y + 1))[2]) + (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + (dataPtrRead + nChan * (x - 1) + step * y)[2]) / matrixWeight);
+                                blue = 255;
                             }
 
-                            blue = (byte)(blue > 255 ? 255 : blue < 0 ? 0 : blue);
-                            green = (byte)(green > 255 ? 255 : green < 0 ? 0 : green);
-                            red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
+                            if (green < 0)
+                            {
+                                green = 0;
+                            }
+                            else if (green > 255)
+                            {
+                                green = 255;
+                            }
 
+                            if (red < 0)
+                            {
+                                red = 0;
+                            }
+                            else if (red > 255)
+                            {
+                                red = 255;
+                            }
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)blue;
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)green;
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)red;
                         }
                     }
-
-
-
-                    blue = (byte)Math.Round((4 * ((dataPtrRead)[0]) + 2 * ((dataPtrRead + nChan)[0]) + 2 * ((dataPtrRead + step * 1)[0]) + (dataPtrRead + nChan + step)[0]) / matrixWeight);
-                    green = (byte)Math.Round((4 * ((dataPtrRead)[1]) + 2 * ((dataPtrRead + nChan)[1]) + 2 * ((dataPtrRead + step * 1)[1]) + (dataPtrRead + nChan + step)[1]) / matrixWeight);
-                    red = (byte)Math.Round((4 * ((dataPtrRead)[2]) + 2 * ((dataPtrRead + nChan)[2]) + 2 * ((dataPtrRead + step * 1)[2]) + (dataPtrRead + nChan + step)[2]) / matrixWeight);
-
-                    blue = (byte)(blue > 255 ? 255 : blue < 0 ? 0 : blue);
-                    green = (byte)(green > 255 ? 255 : green < 0 ? 0 : green);
-                    red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
-
-                    (dataPtrWrite)[0] = blue;
-                    (dataPtrWrite)[1] = green;
-                    (dataPtrWrite)[2] = red;
-
-
-                    blue = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[0]) + 2 * ((dataPtrRead + nChan * (width - 1))[0]) + 2 * ((dataPtrRead + nChan * width + step)[0]) + (dataPtrRead + nChan * (width - 1) + step)[0]) / matrixWeight);
-                    green = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[1]) + 2 * ((dataPtrRead + nChan * (width - 1))[1]) + 2 * ((dataPtrRead + nChan * width + step)[1]) + (dataPtrRead + nChan * (width - 1) + step)[1]) / matrixWeight);
-                    red = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[2]) + 2 * ((dataPtrRead + nChan * (width - 1))[2]) + 2 * ((dataPtrRead + nChan * width + step)[2]) + (dataPtrRead + nChan * (width - 1) + step)[2]) / matrixWeight);
-
-                    blue = (byte)(blue > 255 ? 255 : blue < 0 ? 0 : blue);
-                    green = (byte)(green > 255 ? 255 : green < 0 ? 0 : green);
-                    red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
-
-                    (dataPtrWrite + nChan * width)[0] = blue;
-                    (dataPtrWrite + nChan * width)[1] = green;
-                    (dataPtrWrite + nChan * width)[2] = red;
-
-
-                    blue = (byte)Math.Round((4 * ((dataPtrRead + step * height)[0]) + 2 * ((dataPtrRead + step * (height - 1))[0]) + 2 * ((dataPtrRead + step * height + nChan)[0]) + (dataPtrRead + step * (height - 1) + nChan)[0]) / matrixWeight);
-                    green = (byte)Math.Round((4 * ((dataPtrRead + step * height)[1]) + 2 * ((dataPtrRead + step * (height - 1))[1]) + 2 * ((dataPtrRead + step * height + nChan)[1]) + (dataPtrRead + step * (height - 1) + nChan)[1]) / matrixWeight);
-                    red = (byte)Math.Round((4 * ((dataPtrRead + step * height)[2]) + 2 * ((dataPtrRead + step * (height - 1))[2]) + 2 * ((dataPtrRead + step * height + nChan)[2]) + (dataPtrRead + step * (height - 1) + nChan)[2]) / matrixWeight);
-
-                    blue = (byte)(blue > 255 ? 255 : blue < 0 ? 0 : blue);
-                    green = (byte)(green > 255 ? 255 : green < 0 ? 0 : green);
-                    red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
-
-                    (dataPtrWrite + step * height)[0] = blue;
-                    (dataPtrWrite + step * height)[1] = green;
-                    (dataPtrWrite + step * height)[2] = red;
-
-                    blue = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[0]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[0]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[0]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[0]) / matrixWeight);
-                    green = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[1]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[1]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[1]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[1]) / matrixWeight);
-                    red = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[2]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[2]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[2]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[2]) / matrixWeight);
-
-                    blue = (byte)(blue > 255 ? 255 : blue < 0 ? 0 : blue);
-                    green = (byte)(green > 255 ? 255 : green < 0 ? 0 : green);
-                    red = (byte)(red > 255 ? 255 : red < 0 ? 0 : red);
-
-                    (dataPtrWrite + nChan * width + step * height)[0] = blue;
-                    (dataPtrWrite + nChan * width + step * height)[1] = green;
-                    (dataPtrWrite + nChan * width + step * height)[2] = red;
                 }
             }
         }
@@ -621,158 +1152,1328 @@ namespace CG_OpenCV
         {
             unsafe
             {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
                 MIplImage m = img.MIplImage;
-                MIplImage mCopy = imgCopy.MIplImage;
                 byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
                 int nChan = m.nChannels; // number of channels - 3
                 int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
-                int x, y;
-                int xo, yo;
+                int x, y, sx, sy;
                 int step = m.widthStep;
-                int sx, sy, s;
 
                 if (nChan == 3) // image in RGB
                 {
                     for (y = 1; y < height - 1; y++)
                     {
-
+                        //core
                         for (x = 1; x < width - 1; x++)
                         {
-                            sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[0] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                            sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                            s = sx + sy;
-                            blue = (byte)(s > 255 ? 255 : s);
+                            sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0])
+                                );
 
-                            sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[1] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                            sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                            s = sx + sy;
-                            green = (byte)(s > 255 ? 255 : s);
+                            sy = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0])
+                                );
 
-                            sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[2] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                            sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                            s = sx + sy;
-                            red = (byte)(s > 255 ? 255 : s);
-
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
-                        }
-                    }
-
-                    for (y = 0; y < height; y = height - 1)
-                    {
-                        for (x = 1; x < width - 1; x++)
-                        {
-                            if (y == 0)
+                            if (sx + sy > 255)
                             {
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[0] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * y)[0] - 2 * (dataPtrRead + nChan * x + step * y)[0] - (dataPtrRead + nChan * (x + 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                                s = sx + sy;
-                                blue = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[1] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * y)[1] - 2 * (dataPtrRead + nChan * x + step * y)[1] - (dataPtrRead + nChan * (x + 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                                s = sx + sy;
-                                green = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[2] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * y)[2] - 2 * (dataPtrRead + nChan * x + step * y)[2] - (dataPtrRead + nChan * (x + 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                                s = sx + sy;
-                                red = (byte)(s > 255 ? 255 : s);
+                                (dataPtrWrite + nChan * x + step * y)[0] = 255;
                             }
                             else
                             {
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[0] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + (dataPtrRead + nChan * (x - 1) + step * y)[0] + 2 * (dataPtrRead + nChan * x + step * y)[0] + (dataPtrRead + nChan * (x + 1) + step * y)[0]);
-                                s = sx + sy;
-                                blue = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[1] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + (dataPtrRead + nChan * (x - 1) + step * y)[1] + 2 * (dataPtrRead + nChan * x + step * y)[1] + (dataPtrRead + nChan * (x + 1) + step * y)[1]);
-                                s = sx + sy;
-                                green = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs(3 * (dataPtrRead + nChan * (x - 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] - 3 * (dataPtrRead + nChan * (x + 1) + step * y)[2] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                                sy = Math.Abs((-1) * (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] - 2 * (dataPtrRead + nChan * x + step * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + (dataPtrRead + nChan * (x - 1) + step * y)[2] + 2 * (dataPtrRead + nChan * x + step * y)[2] + (dataPtrRead + nChan * (x + 1) + step * y)[2]);
-                                s = sx + sy;
-                                red = (byte)(s > 255 ? 255 : s);
+                                (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
                             }
 
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            sx = (int)Math.Abs(
+                                    ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1]) -
+                                    ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1])
+                                    );
+
+                            sy = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1])
+                                );
+
+                            if (sx + sy > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                            }
+
+                            sx = (int)Math.Abs(
+                                    ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2]) -
+                                    ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2])
+                                    );
+
+                            sy = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2])
+                                );
+
+                            if (sx + sy > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                            }
+                        }
+                    }
+
+                    for (x = 1; x < width - 1; x++)
+                    {
+                        //linha inicial
+                        y = 0;
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                        }
+
+                        // linha final
+                        y = height - 1;
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y))[1]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y))[2]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
                         }
                     }
 
                     for (y = 1; y < height - 1; y++)
                     {
-                        for (x = 0; x < width; x = width - 1)
+                        x = 0;
+                        //coluna inicial                        
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) -
+                            ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0])
+                            );
+
+                        if (sx + sy > 255)
                         {
-                            if (x == 0)
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) -
+                            ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) -
+                            ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                        }
+
+                        x = width - 1;
+                        //coluna final
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x) + step * (y - 1))[0])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x) + step * (y - 1))[1])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                        }
+
+                        sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2])
+                                );
+
+                        sy = (int)Math.Abs(
+                            ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2]) -
+                            ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x) + step * (y - 1))[2])
+                            );
+
+                        if (sx + sy > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                        }
+
+                    }
+                    //canto superior esquerdo
+                    x = 0;
+                    y = 0;
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) -
+                        ((dataPtrRead + nChan * (x) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) -
+                        ((dataPtrRead + nChan * (x) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) -
+                        ((dataPtrRead + nChan * (x) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                    }
+
+                    //canto superior direito
+                    x = width - 1;
+                    y = 0;
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0]) -
+                                ((dataPtrRead + nChan * (x) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[0] + (dataPtrRead + nChan * (x) + step * (y + 1))[0]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y))[0])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1]) -
+                                ((dataPtrRead + nChan * (x) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[1] + (dataPtrRead + nChan * (x) + step * (y + 1))[1]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y))[1])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2]) -
+                                ((dataPtrRead + nChan * (x) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y + 1))[2] + (dataPtrRead + nChan * (x) + step * (y + 1))[2]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y))[2])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                    }
+
+                    //canto inferior esquerdo
+                    x = 0;
+                    y = height - 1;
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y))[0]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x + 1) + step * (y))[0]) -
+                        ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y))[1]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x + 1) + step * (y))[1]) -
+                        ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y))[2]) -
+                                ((dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x + 1) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x + 1) + step * (y))[2]) -
+                        ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                    }
+
+                    //canto inferior direito
+                    x = width - 1;
+                    y = height - 1;
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[0] + (dataPtrRead + nChan * (x - 1) + step * (y))[0]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y))[0])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y))[0] + (dataPtrRead + nChan * (x) + step * (y))[0]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[0] + (dataPtrRead + nChan * (x) + step * (y - 1))[0])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[0] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[1] + (dataPtrRead + nChan * (x - 1) + step * (y))[1]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y))[1])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y))[1] + (dataPtrRead + nChan * (x) + step * (y))[1]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[1] + (dataPtrRead + nChan * (x) + step * (y - 1))[1])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[1] = (byte)(sx + sy);
+                    }
+
+                    sx = (int)Math.Abs(
+                                ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * (y))[2] + (dataPtrRead + nChan * (x - 1) + step * (y))[2]) -
+                                ((dataPtrRead + nChan * (x) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y))[2])
+                                );
+
+                    sy = (int)Math.Abs(
+                        ((dataPtrRead + nChan * (x - 1) + step * (y))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y))[2] + (dataPtrRead + nChan * (x) + step * (y))[2]) -
+                        ((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x) + step * (y - 1))[2] + (dataPtrRead + nChan * (x) + step * (y - 1))[2])
+                        );
+
+                    if (sx + sy > 255)
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                    }
+                    else
+                    {
+                        (dataPtrWrite + nChan * x + step * y)[2] = (byte)(sx + sy);
+                    }
+                }
+            }
+
+        }
+
+        public static void Diferentiation(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
+        {
+            unsafe
+            {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y, g;
+                int step = m.widthStep;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height - 1; y++)
+                    {
+                        //inicio
+                        for (x = 0; x < width - 1; x++)
+                        {
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x + 1) + step * (y))[0]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x) + step * (y + 1))[0]);
+
+                            if (g > 255)
                             {
-                                sx = Math.Abs((dataPtrRead + nChan * x + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * x + step * y)[0] + (dataPtrRead + nChan * x + step * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[0] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                                sy = Math.Abs((- 3) * (dataPtrRead + nChan * x + step * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[0] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]);
-                                s = sx + sy;
-                                blue = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs((dataPtrRead + nChan * x + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * x + step * y)[1] + (dataPtrRead + nChan * x + step * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[1] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                                sy = Math.Abs((-3) * (dataPtrRead + nChan * x + step * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[1] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]);
-                                s = sx + sy;
-                                green = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs((dataPtrRead + nChan * x + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * x + step * y)[2] + (dataPtrRead + nChan * x + step * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] - 2 * (dataPtrRead + nChan * (x + 1) + step * y)[2] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                                sy = Math.Abs((-3) * (dataPtrRead + nChan * x + step * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + step * (y - 1))[2] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]);
-                                s = sx + sy;
-                                red = (byte)(s > 255 ? 255 : s);
+                                (dataPtrWrite + nChan * x + step * y)[0] = 255;
                             }
                             else
                             {
-                                sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0] - (dataPtrRead + nChan * x + step * (y - 1))[0] - 2 * (dataPtrRead + nChan * x + step * y)[0] - (dataPtrRead + nChan * x + step * (y + 1))[0]);
-                                sy = Math.Abs((-3) * (dataPtrRead + nChan * x + step * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + step * (y - 1))[0] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[0] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[0]);
-                                s = sx + sy;
-                                blue = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1] - (dataPtrRead + nChan * x + step * (y - 1))[1] - 2 * (dataPtrRead + nChan * x + step * y)[1] - (dataPtrRead + nChan * x + step * (y + 1))[1]);
-                                sy = Math.Abs((-3) * (dataPtrRead + nChan * x + step * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + step * (y - 1))[1] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[1] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[1]);
-                                s = sx + sy;
-                                green = (byte)(s > 255 ? 255 : s);
-
-                                sx = Math.Abs((dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 2 * (dataPtrRead + nChan * (x - 1) + step * y)[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2] - (dataPtrRead + nChan * x + step * (y - 1))[2] - 2 * (dataPtrRead + nChan * x + step * y)[2] - (dataPtrRead + nChan * x + step * (y + 1))[2]);
-                                sy = Math.Abs((-3) * (dataPtrRead + nChan * x + step * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + step * (y - 1))[2] + 3 * (dataPtrRead + nChan * x + step * (y + 1))[2] + (dataPtrRead + nChan * (x - 1) + step * (y + 1))[2]);
-                                s = sx + sy;
-                                red = (byte)(s > 255 ? 255 : s);
+                                (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
                             }
 
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x + 1) + step * (y))[1]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x) + step * (y + 1))[1]);
 
-                            (dataPtrWrite + nChan * x + step * y)[0] = blue;
-                            (dataPtrWrite + nChan * x + step * y)[1] = green;
-                            (dataPtrWrite + nChan * x + step * y)[2] = red;
+                            if (g > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                            }
+
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x + 1) + step * (y))[2]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x) + step * (y + 1))[2]);
+
+                            if (g > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                            }
                         }
                     }
 
+                    for (x = 0; x < width - 1; x++)
+                    {
+                        // linha final
+                        y = height - 1;
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x + 1) + step * (y))[0]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x + 1) + step * (y))[1]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x + 1) + step * (y))[2]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                        }
+                    }
+
+                    for (y = 0; y < height - 1; y++)
+                    {
+                        //coluna final
+                        x = width - 1;
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x) + step * (y + 1))[0]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x) + step * (y + 1))[1]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x) + step * (y + 1))[2]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                        }
+
+                    }
+
+                    //canto inferior direito
+                    x = width - 1;
+                    y = height - 1;
+                    (dataPtrWrite + nChan * x + step * y)[0] = 0;
+                    (dataPtrWrite + nChan * x + step * y)[1] = 0;
+                    (dataPtrWrite + nChan * x + step * y)[2] = 0;
+                }
+            }
+
+        }
+
+        public static void Roberts(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
+        {
+            unsafe
+            {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y, g;
+                int step = m.widthStep;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height - 1; y++)
+                    {
+                        //inicio
+                        for (x = 0; x < width - 1; x++)
+                        {
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[0]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[0] - (dataPtrRead + nChan * (x) + step * (y + 1))[0]);
+
+                            if (g > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
+                            }
+
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[1]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[1] - (dataPtrRead + nChan * (x) + step * (y + 1))[1]);
+
+                            if (g > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                            }
+
+                            g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x + 1) + step * (y + 1))[2]) +
+                                (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[2] - (dataPtrRead + nChan * (x) + step * (y + 1))[2]);
+
+                            if (g > 255)
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                            }
+                            else
+                            {
+                                (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                            }
+                        }
+                    }
+
+                    for (x = 0; x < width - 1; x++)
+                    {
+                        // linha final
+                        y = height - 1;
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x + 1) + step * (y))[0]) +
+                            (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[0] - (dataPtrRead + nChan * (x) + step * (y))[0]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x + 1) + step * (y))[1]) +
+                            (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[1] - (dataPtrRead + nChan * (x) + step * (y))[1]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x + 1) + step * (y))[2]) +
+                            (int)Math.Abs((dataPtrRead + nChan * (x + 1) + step * (y))[2] - (dataPtrRead + nChan * (x) + step * (y))[2]);
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                        }
+                    }
+
+                    for (y = 0; y < height - 1; y++)
+                    {
+                        //coluna final
+                        x = width - 1;
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[0] - (dataPtrRead + nChan * (x) + step * (y + 1))[0]) * 2;
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[0] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[1] - (dataPtrRead + nChan * (x) + step * (y + 1))[1]) * 2;
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[1] = (byte)(g);
+                        }
+
+                        g = (int)Math.Abs((dataPtrRead + nChan * (x) + step * (y))[2] - (dataPtrRead + nChan * (x) + step * (y + 1))[2]) * 2;
+
+                        if (g > 255)
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = 255;
+                        }
+                        else
+                        {
+                            (dataPtrWrite + nChan * x + step * y)[2] = (byte)(g);
+                        }
+
+                    }
+
+                    //canto inferior direito
+                    x = width - 1;
+                    y = height - 1;
+                    (dataPtrWrite + nChan * x + step * y)[0] = 0;
+                    (dataPtrWrite + nChan * x + step * y)[1] = 0;
+                    (dataPtrWrite + nChan * x + step * y)[2] = 0;
+                }
+            }
+        }
+
+        public static void Median(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
+        {
+            unsafe
+            {
+                MIplImage imageCopy = imgCopy.MIplImage;
+                byte* dataPtrRead = (byte*)imageCopy.imageData.ToPointer();
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y, index;
+                int[] p = new int[9];
+                int step = m.widthStep;
+                int stepCopy = imageCopy.widthStep;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 1; y < height - 1; y++)
+                    {
+                        //inicio
+                        for (x = 1; x < width - 1; x++)
+                        {   /* P1 - P2 */
+                            p[0] = (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P1 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P1 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P1 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P1 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P1 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P1 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P1 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
 
 
-                    (dataPtrWrite)[0] = (byte)Math.Round((4 * ((dataPtrRead)[0]) + 2 * ((dataPtrRead + nChan)[0]) + 2 * ((dataPtrRead + step * 1)[0]) + (dataPtrRead + nChan + step)[0]) / 9.0);
-                    (dataPtrWrite)[1] = (byte)Math.Round((4 * ((dataPtrRead)[1]) + 2 * ((dataPtrRead + nChan)[1]) + 2 * ((dataPtrRead + step * 1)[1]) + (dataPtrRead + nChan + step)[1]) / 9.0);
-                    (dataPtrWrite)[2] = (byte)Math.Round((4 * ((dataPtrRead)[2]) + 2 * ((dataPtrRead + nChan)[2]) + 2 * ((dataPtrRead + step * 1)[2]) + (dataPtrRead + nChan + step)[2]) / 9.0);
+                            /* P2 - P1 */
+                            p[1] = (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
 
-                    (dataPtrWrite + nChan * width)[0] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[0]) + 2 * ((dataPtrRead + nChan * (width - 1))[0]) + 2 * ((dataPtrRead + nChan * width + step)[0]) + (dataPtrRead + nChan * (width - 1) + step)[0]) / 9.0);
-                    (dataPtrWrite + nChan * width)[1] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[1]) + 2 * ((dataPtrRead + nChan * (width - 1))[1]) + 2 * ((dataPtrRead + nChan * width + step)[1]) + (dataPtrRead + nChan * (width - 1) + step)[1]) / 9.0);
-                    (dataPtrWrite + nChan * width)[2] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width)[2]) + 2 * ((dataPtrRead + nChan * (width - 1))[2]) + 2 * ((dataPtrRead + nChan * width + step)[2]) + (dataPtrRead + nChan * (width - 1) + step)[2]) / 9.0);
+                                   /* P2 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
 
-                    (dataPtrWrite + step * height)[0] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[0]) + 2 * ((dataPtrRead + step * (height - 1))[0]) + 2 * ((dataPtrRead + step * height + nChan)[0]) + (dataPtrRead + step * (height - 1) + nChan)[0]) / 9.0);
-                    (dataPtrWrite + step * height)[1] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[1]) + 2 * ((dataPtrRead + step * (height - 1))[1]) + 2 * ((dataPtrRead + step * height + nChan)[1]) + (dataPtrRead + step * (height - 1) + nChan)[1]) / 9.0);
-                    (dataPtrWrite + step * height)[2] = (byte)Math.Round((4 * ((dataPtrRead + step * height)[2]) + 2 * ((dataPtrRead + step * (height - 1))[2]) + 2 * ((dataPtrRead + step * height + nChan)[2]) + (dataPtrRead + step * (height - 1) + nChan)[2]) / 9.0);
+                                   /* P2 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
 
-                    (dataPtrWrite + nChan * width + step * height)[0] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[0]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[0]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[0]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[0]) / 9.0);
-                    (dataPtrWrite + nChan * width + step * height)[1] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[1]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[1]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[1]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[1]) / 9.0);
-                    (dataPtrWrite + nChan * width + step * height)[2] = (byte)Math.Round((4 * ((dataPtrRead + nChan * width + step * height)[2]) + 2 * ((dataPtrRead + nChan * width + step * (height - 1))[2]) + 2 * ((dataPtrRead + nChan * (width - 1) + step * height)[2]) + (dataPtrRead + nChan * (width - 1) + step * (height - 1))[2]) / 9.0);
+                                   /* P2 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P2 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P2 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P2 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P2 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P3 - P1 */
+                            p[2] = (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P3 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P3 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P3 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P3 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P3 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P3 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P3 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P4 - P1 */
+                            p[3] = (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P4 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P4 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P4 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P4 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P4 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P4 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P4 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P5 - P1 */
+                            p[4] = (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P5 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P5 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P5 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P5 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P5 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P5 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P5 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P6 - P1 */
+                            p[5] = (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P6 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P6 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P6 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P6 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P6 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P6 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P6 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P7 - P1 */
+                            p[6] = (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P7 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P7 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P7 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P7 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P7 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P7 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]) +
+
+                                   /* P7 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P8 - P1 */
+                            p[7] = (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P8 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P8 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P8 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P8 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P8 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P8 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P8 - P9 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2]);
+
+
+                            /* P9 - P1 */
+                            p[8] = (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P9 - P2 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2]) +
+
+                                   /* P9 - P3 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2]) +
+
+                                   /* P9 - P4 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2]) +
+
+                                   /* P9 - P5 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y))[2]) +
+
+                                   /* P9 - P6 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2]) +
+
+                                   /* P9 - P7 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2]) +
+
+                                   /* P9 - P8 */
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1]) +
+                                   (int)Math.Abs((dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2] - (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2]);
+
+
+                            index = Array.IndexOf(p, p.Min());
+                            switch (index)
+                            {
+                                case 0:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y - 1))[2];
+                                    break;
+
+                                case 1:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x) + stepCopy * (y - 1))[2];
+                                    break;
+
+                                case 2:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y - 1))[2];
+                                    break;
+
+                                case 3:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y))[2];
+                                    break;
+
+                                case 4:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x) + stepCopy * (y))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x) + stepCopy * (y))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x) + stepCopy * (y))[2];
+                                    break;
+
+                                case 5:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y))[2];
+                                    break;
+
+                                case 6:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x - 1) + stepCopy * (y + 1))[2];
+                                    break;
+
+                                case 7:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x) + stepCopy * (y + 1))[2];
+                                    break;
+
+                                case 8:
+                                    (dataPtrWrite + nChan * x + step * y)[0] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[0];
+                                    (dataPtrWrite + nChan * x + step * y)[1] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[1];
+                                    (dataPtrWrite + nChan * x + step * y)[2] = (dataPtrRead + nChan * (x + 1) + stepCopy * (y + 1))[2];
+                                    break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -818,21 +2519,22 @@ namespace CG_OpenCV
             }
         }
 
-        public static int[] Histogram_Gray(Emgu.CV.Image<Bgr, byte> img) {
-            unsafe {
+        public static int[] Histogram_Gray(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
                 int nChan = m.nChannels;
                 int padding = m.widthStep - m.nChannels * m.width;
-                int x, y;
+                int x, y, blue, green, red, gray;
                 int step = m.widthStep;
                 int[] h = new int[256];
 
-                if (nChan == 3)
+                if (nChan == 3) // image in RGB
                 {
                     for (y = 0; y < height; y++)
                     {
@@ -841,8 +2543,7 @@ namespace CG_OpenCV
                             blue = (dataPtr + nChan * x + step * y)[0];
                             green = (dataPtr + nChan * x + step * y)[1];
                             red = (dataPtr + nChan * x + step * y)[2];
-
-                            gray = (byte)((blue + green + red) / 3.0);
+                            gray = (int)Math.Round((blue + green + red) / 3.0);
 
                             h[gray]++;
                         }
@@ -852,72 +2553,63 @@ namespace CG_OpenCV
             }
         }
 
-        public static void ConvertToBW_Otsu(Emgu.CV.Image<Bgr, byte> img) {
-            unsafe {
+        public static void ConvertToBW_Otsu(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
-
-                int width = img.Width;
-                int height = img.Height;
-                int nChan = m.nChannels;
-                int padding = m.widthStep - m.nChannels * m.width;
-                int x, y;
-                int step = m.widthStep;
+                double q1, q2, u1, u2, sigma = 0, tmp_sigma = 0;
+                double total = img.Width * img.Height;
+                int i, j, t, threshold = 0;
                 int[] h = Histogram_Gray(img);
-                int i, t, j;
-                int threshold = 0;
-                double sigma = 0, _sigma = 0;
-                double q1 = 0, q2 = 0, u1 = 0, u2 = 0;
-                double total = width * height;
-
+                
                 for (t = 0; t < 256; t++)
                 {
-                    q1 = 0;
-                    q2 = 0;
-                    u1 = 0;
-                    u2 = 0;
+                    q1 = q2 = u1 = u2 = 0;
 
-                    for(i = 0; i <= t; i++) {
-                        q1 += (h[i] / total);
-                        u1 += (i * h[i] / total);
+                    for(i = 0; i <= t; i++)
+                    {
+                        q1 += h[i] / total;
+                        u1 += i * h[i] / total;
                     }
-                    
                     u1 /= q1;
 
-                    for(j = 0; j < 256; j++) {
-                        q2 += (h[i] / total);
-                        u2 += (i * h[i] / total);
+                    for (j = t; j < 256; j++)
+                    {
+                        q2 += h[j] / total;
+                        u2 += j * h[j] / total;
                     }
-
                     u2 /= q2;
+                    tmp_sigma = q1 * q2 * ((u1 - u2) * (u1 - u2));
 
-                    _sigma = q1 * q2 * ((u1 - u2) * (u1 - u2));
-
-                    if (sigma < _sigma) {
-                        sigma = _sigma;
+                    if(sigma < tmp_sigma)
+                    {
+                        sigma = tmp_sigma;
                         threshold = t;
                     }
                 }
+                
                 ConvertToBW(img, threshold);
             }
         }
 
-        public static int[,] Histogram_RGB(Emgu.CV.Image<Bgr, byte> img) {
-            unsafe {
+        public static int[,] Histogram_RGB(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
                 int nChan = m.nChannels;
                 int padding = m.widthStep - m.nChannels * m.width;
-                int x, y;
+                int x, y, blue, green, red;
                 int step = m.widthStep;
                 int[,] h = new int[3,256];
 
-                if (nChan == 3)
+                if (nChan == 3) // image in RGB
                 {
                     for (y = 0; y < height; y++)
                     {
@@ -937,21 +2629,22 @@ namespace CG_OpenCV
             }
         }
 
-        public static int[,] Histogram_All(Emgu.CV.Image<Bgr, byte> img) {
-            unsafe {
+        public static int[,] Histogram_All(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
                 int nChan = m.nChannels;
                 int padding = m.widthStep - m.nChannels * m.width;
-                int x, y;
+                int x, y, blue, green, red, gray;
                 int step = m.widthStep;
-                int[,] h = new int[4,256];
+                int[,] h = new int[4, 256];
 
-                if (nChan == 3)
+                if (nChan == 3) // image in RGB
                 {
                     for (y = 0; y < height; y++)
                     {
@@ -960,20 +2653,18 @@ namespace CG_OpenCV
                             blue = (dataPtr + nChan * x + step * y)[0];
                             green = (dataPtr + nChan * x + step * y)[1];
                             red = (dataPtr + nChan * x + step * y)[2];
+                            gray = (int)Math.Round((blue + green + red) / 3.0);
 
-                            gray = (byte)((blue + green + red) / 3.0);
-
-                            h[0, blue]++;
-                            h[1, green]++;
-                            h[2, red]++;
-                            h[3, gray]++;
+                            h[0, gray]++;
+                            h[1, blue]++;
+                            h[2, green]++;
+                            h[3, red]++;
                         }
                     }
                 }
                 return h;
             }
         }
-
 
         public static Image<Bgr, byte> Signs(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, out List<string[]> limitSign, out List<string[]> warningSign, out List<string[]> prohibitionSign, int level)
         {
