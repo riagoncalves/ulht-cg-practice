@@ -2775,7 +2775,7 @@ namespace CG_OpenCV
                         {
                             double[] hsv = BGR_To_HSV((dataPtr + nChan * x + step * y)[0] / 255.0, (dataPtr + nChan * x + step * y)[1] / 255.0, (dataPtr + nChan * x + step * y)[2] / 255.0);
 
-                            if(hsv[1] > 0.4 && hsv[2] > 0.2 && ((hsv[0] >= 0 || hsv[0] <= 25) || (hsv[0] >= 335 && hsv[0] <= 360))) {
+                            if(hsv[1] > 0.4 && hsv[2] > 0.2 && ((hsv[0] >= 0 && hsv[0] <= 25) || (hsv[0] >= 335 && hsv[0] <= 360))) {
                                 (dataPtr + nChan * x + step * y)[0] = 255;
                                 (dataPtr + nChan * x + step * y)[1] = 255;
                                 (dataPtr + nChan * x + step * y)[2] = 255;
