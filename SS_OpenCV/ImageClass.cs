@@ -26,7 +26,6 @@ namespace CG_OpenCV
 
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -72,7 +71,7 @@ namespace CG_OpenCV
 
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                byte gray;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -116,7 +115,7 @@ namespace CG_OpenCV
 
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                byte blue, green, red;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -167,7 +166,6 @@ namespace CG_OpenCV
 
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -210,7 +208,7 @@ namespace CG_OpenCV
                 MIplImage mCopy = imgCopy.MIplImage;
                 byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
                 byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                byte blue, green, red;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -260,7 +258,7 @@ namespace CG_OpenCV
                 MIplImage mCopy = imgCopy.MIplImage;
                 byte* dataPtrWrite = (byte*)m.imageData.ToPointer();
                 byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer();
-                byte blue, green, red, gray;
+                byte blue, green, red;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -313,7 +311,7 @@ namespace CG_OpenCV
                 MIplImage mCopy = imgCopy.MIplImage;
                 byte* dataPtrWrite = (byte*)m.imageData.ToPointer(); // Pointer to the image
                 byte* dataPtrRead = (byte*)mCopy.imageData.ToPointer(); // Pointer to the image
-                byte blue, green, red, gray;
+                byte blue, green, red;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -2682,6 +2680,8 @@ namespace CG_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int step = m.widthStep;
+
+                // Numbers Import
                 Image[] numberFiles = new Image[10];
 
                 for(int i = 0; i < 10; i++) {
@@ -2689,8 +2689,11 @@ namespace CG_OpenCV
                 }
 
                 doHSV(img);
+
                 int[,] tagsMatrix = doTag(img);
-                Write_CSV(tagsMatrix);
+
+                // Write_CSV(tagsMatrix);
+
                 List<int[]> corners = getPosicoes(tagsMatrix, height, width);
                 clearNoise(corners, height, width);
 
@@ -2712,45 +2715,30 @@ namespace CG_OpenCV
                 List<Image<Bgr, byte>> listSignsOriginal = listSigns(imgCopy, corners);
                 doHSVBlack(listSignsOriginal);
 
-                foreach(Image<Bgr, byte> sign in listSignsOriginal) {
-                    int value = compareNumbers(sign, numberFiles);
-                    Console.Write(value);
+                for(int i = 0; i < listSignsOriginal.Count; i++) {
+                    int value = compareNumbers(listSignsOriginal[i], numberFiles);
+                    
+                    if(value < 10) {
+                        string[] prohibitionSignVector = new string[5];
+                        prohibitionSignVector[0] = "-1";
+                        prohibitionSignVector[1] = corners[i][1] + ""; // Left-x
+                        prohibitionSignVector[2] = corners[i][3] + ""; // Top-y
+                        prohibitionSignVector[3] = corners[i][2] + ""; // Right-x
+                        prohibitionSignVector[4] = corners[i][4] + ""; // Bottom-y
+
+                        prohibitionSign.Add(prohibitionSignVector);
+                    }
+                    else {
+                        string[] limitSignVector = new string[5];
+                        limitSignVector[0] = value + "";
+                        limitSignVector[1] = corners[i][1] + ""; // Left-x
+                        limitSignVector[2] = corners[i][3] + ""; // Top-y
+                        limitSignVector[3] = corners[i][2] + ""; // Right-x
+                        limitSignVector[4] = corners[i][4] + ""; // Bottom-y
+
+                        limitSign.Add(limitSignVector);
+                    }
                 }
-
-                //listsignsoriginal = list signs
-                //do hsv black
-
-                /*
-                    writecsv das etiquetas (for)
-                */
-
-
-                // string[] dummy_vector1 = new string[5];
-                // dummy_vector1[0] = "70";   // Speed limit
-                // dummy_vector1[1] = "1160"; // Left-x
-                // dummy_vector1[2] = "330";  // Top-y
-                // dummy_vector1[3] = "1200"; // Right-x
-                // dummy_vector1[4] = "350";  // Bottom-y
-
-                // string[] dummy_vector2 = new string[5];
-                // dummy_vector2[0] = "-1";  // value -1
-                // dummy_vector2[1] = "669"; // Left-x
-                // dummy_vector2[2] = "469"; // Top-y
-                // dummy_vector2[3] = "680"; // Right-x
-                // dummy_vector2[4] = "480"; // Bottom-y
-
-                // string[] dummy_vector3 = new string[5];
-                // dummy_vector3[0] = "-1";  // value -1
-                // dummy_vector3[1] = "669"; // Left-x
-                // dummy_vector3[2] = "469"; // Top-y
-                // dummy_vector3[3] = "680"; // Right-x
-                // dummy_vector3[4] = "480"; // Bottom-y
-
-                // limitSign.Add(dummy_vector1);
-                // warningSign.Add(dummy_vector2);
-                // prohibitionSign.Add(dummy_vector3);
-
-
                 return img;
             }
         }
@@ -2759,7 +2747,6 @@ namespace CG_OpenCV
             unsafe {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-                byte blue, green, red, gray;
 
                 int width = img.Width;
                 int height = img.Height;
@@ -2960,19 +2947,24 @@ namespace CG_OpenCV
             List<int[]> corners = getPosicoes(signMatrixTags, sign.Height, sign.Width, true);
             clearNoise(corners, sign.Height, sign.Width);
 
-            List<Image<Bgr, byte>> numberList = listSigns(sign, corners);
+            List<Image<Bgr, byte>> numberList = listSigns(sign, corners, true);
 
             int signValueIndex = 0;
             bool hasNum = false;
-            int refN = 0;
+            
+            // int refN = 0;
+
             foreach(Image<Bgr, byte> numberImage in numberList) {
                 int width = numberImage.Width;
                 int height = numberImage.Height;
                 int totalPixels = height * width;
                 int[,] numberImageTags = doTag(numberImage);
                 double[] allDifs = new double[10];
-                Write_CSV(numberImageTags, refN + "");
-                refN++;
+
+                // Write_CSV(numberImageTags, refN + "");
+                // refN++;
+
+
                 for(int i = 0; i < numberFiles.Length; i++) {
                     Image<Bgr, byte> resizedImage = new Image<Bgr, Byte>(new Bitmap(numberFiles[i], new Size(width, height)));
                     int diff = 0;
@@ -3059,7 +3051,7 @@ namespace CG_OpenCV
                 posicao[2] = 0; // x right
                 posicao[3] = h - 1; // y top
                 posicao[4] = 0; // y bottom
-                posicao[5] = 0; // (isWarning: 0 = false, 1 = true)
+                posicao[5] = 0; // (isTriangle: 0 = false, 1 = true)
 
                 int auxYL = 0;
                 int auxYR = 0;
@@ -3159,7 +3151,7 @@ namespace CG_OpenCV
                     }
                 }
 
-                if (!(isOutside && (localArea / maxArea) * 100.0 > 22 && (localArea / (h * w)) * 100.0 > 0.1))
+                if (!(isOutside && (localArea / maxArea) * 100.0 > 10 && (localArea / (h * w)) * 100.0 > 0.1))
                 {
                     removeIndexs.Add(i);
                 }
@@ -3173,11 +3165,9 @@ namespace CG_OpenCV
             }
         }
 
-        public static List<Image<Bgr, byte>> listSigns(Image<Bgr, byte> img, List<int[]> signs)
+        public static List<Image<Bgr, byte>> listSigns(Image<Bgr, byte> img, List<int[]> signs, bool sort = false)
         {
-            Console.Write(signs);
-            signs.Sort((a, b) => b[1].CompareTo(a[1]));
-            Console.Write(signs);
+            if(sort) signs.Sort((a, b) => b[1].CompareTo(a[1]));
             List<Image<Bgr, byte>> signsList = new List<Image<Bgr, byte>>();
 
             for (int i = 0; i < signs.Count; i++)
@@ -3239,11 +3229,6 @@ namespace CG_OpenCV
                         }
                     }
                 }
-
-                /*for (int j = 0; j < listSigns.Count; j++)
-                {
-                    listSigns[j].Save(@"img_"+ j + ".jpg");
-                }*/
             }
         }
     }
