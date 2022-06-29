@@ -2682,6 +2682,11 @@ namespace CG_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width;
                 int x, y;
                 int step = m.widthStep;
+                Image[] numberFiles = new Image[10];
+
+                for(int i = 0; i < 10; i++) {
+                    numberFiles[i] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\" + i + ".png");
+                }
 
                 doHSV(img);
                 int[,] tagsMatrix = doTag(img);
@@ -2708,7 +2713,7 @@ namespace CG_OpenCV
                 doHSVBlack(listSignsOriginal);
 
                 foreach(Image<Bgr, byte> sign in listSignsOriginal) {
-                    int value = compareNumbers(sign);
+                    int value = compareNumbers(sign, numberFiles);
                     Console.Write(value);
                 }
 
@@ -2814,13 +2819,14 @@ namespace CG_OpenCV
             return hsv;
         }
 
-        public static int[,] doTag(Image<Bgr, byte> img) {
+        public static int[,] doTag(Image<Bgr, byte> img, bool margin = false) {
             unsafe {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer();
-
                 int width = img.Width;
                 int height = img.Height;
+                int marginH = margin ?(int)(height * 0.15) : 0;
+                int marginW = margin ?(int)(width * 0.15) : 0;
                 int nChan = m.nChannels;
                 int x, y;
                 int step = m.widthStep;
@@ -2828,9 +2834,9 @@ namespace CG_OpenCV
                 int num = 1;
                 bool changed = false;
 
-                for (y = 0; y < height; y++)
+                for (y = marginH; y < height - marginH; y++)
                 {
-                    for (x = 0; x < width; x++)
+                    for (x = marginW; x < width - marginW; x++)
                     {
                         if((dataPtr + nChan * x + step * y)[0] == 255) {
                             matrix[y,x] = num;
@@ -2845,9 +2851,9 @@ namespace CG_OpenCV
                 do {
                     changed = false;
 
-                    for (y = 1; y < height - 1; y++)
+                    for (y = 1 + marginH; y < height - 1 - marginH; y++)
                     {
-                        for (x = 1; x < width - 1; x++)
+                        for (x = 1 + marginW; x < width - 1 - marginW; x++)
                         {
                             if (matrix[y,x] == 0) continue;
 
@@ -2887,9 +2893,9 @@ namespace CG_OpenCV
 
                     changed = false;
 
-                    for (y = height - 2; y > 0; y--)
+                    for (y = height - 2 - marginH; y > marginH; y--)
                     {
-                        for (x = width - 2; x > 0; x--)
+                        for (x = width - 2 - marginW; x > marginW; x--)
                         {
                             if (matrix[y,x] == 0) continue;
 
@@ -2945,24 +2951,13 @@ namespace CG_OpenCV
             }
         }
 
-        public static int compareNumbers(Image<Bgr, byte> sign) {
+        public static int compareNumbers(Image<Bgr, byte> sign, Image[] numberFiles) {
             int finalValue = -1;
             List<int> signValues = new List<int>();
-            Image[] numberFiles = new Image[10];
-            numberFiles[0] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\0.png");
-            numberFiles[1] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\1.png");
-            numberFiles[2] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\2.png");
-            numberFiles[3] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\3.png");
-            numberFiles[4] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\4.png");
-            numberFiles[5] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\5.png");
-            numberFiles[6] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\6.png");
-            numberFiles[7] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\7.png");
-            numberFiles[8] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\8.png");
-            numberFiles[9] = Image.FromFile("F:\\Faculdade\\Trabalhos\\computacao-grafica\\Digitos-20220625\\9.png");
 
-            int[,] signMatrixTags = doTag(sign);
+            int[,] signMatrixTags = doTag(sign, true);
 
-            List<int[]> corners = getPosicoes(signMatrixTags, sign.Height, sign.Width);
+            List<int[]> corners = getPosicoes(signMatrixTags, sign.Height, sign.Width, true);
             clearNoise(corners, sign.Height, sign.Width);
 
             List<Image<Bgr, byte>> numberList = listSigns(sign, corners);
@@ -2975,6 +2970,7 @@ namespace CG_OpenCV
                 int height = numberImage.Height;
                 int totalPixels = height * width;
                 int[,] numberImageTags = doTag(numberImage);
+                double[] allDifs = new double[10];
                 Write_CSV(numberImageTags, refN + "");
                 refN++;
                 for(int i = 0; i < numberFiles.Length; i++) {
@@ -2992,14 +2988,14 @@ namespace CG_OpenCV
                         }
                     }
 
-                    double div = (diff / (double)totalPixels);
+                   allDifs[i] = (diff / (double)totalPixels);
 
-                    if(div < 0.18) {
-                        signValues.Add(i);
-                        signValueIndex++;
-                        hasNum = true;
-                        break;
-                    }
+                }
+                
+                if(allDifs.Min() < 0.22) {
+                    signValues.Add(Array.IndexOf(allDifs, allDifs.Min()));
+                    signValueIndex++;
+                    hasNum = true;
                 }
             }
 
@@ -3038,15 +3034,17 @@ namespace CG_OpenCV
             return warningSigns;
         }
 
-        public static List<int[]> getPosicoes(int[,] matrix, int h, int w)
+        public static List<int[]> getPosicoes(int[,] matrix, int h, int w, bool margin = false)
         {
             List<int> etiquetas = new List<int>();
             List<int[]> posicoes = new List<int[]>();
             int x, y;
+            int marginH = margin ? (int)(h * 0.15) : 0;
+            int marginW = margin ? (int)(w * 0.15) : 0;
 
-            for (y = 0; y < h - 1; y++)
+            for (y = marginH; y < h - 1 - marginH; y++)
             {
-                for (x = 0; x < w - 1; x++)
+                for (x = marginW; x < w - 1 - marginW; x++)
                 {
                     if (matrix[y,x] != 0 && !etiquetas.Contains(matrix[y,x])) {
                         etiquetas.Add(matrix[y,x]);
@@ -3226,7 +3224,7 @@ namespace CG_OpenCV
                                                         (dataPtr + nChan * x + step * y)[1] / 255.0,
                                                         (dataPtr + nChan * x + step * y)[2] / 255.0);
 
-                            if (hsv[2] < 0.4 && hsv[1] < 0.5)
+                            if (hsv[2] < 0.45)
                             {
                                 (dataPtr + nChan * x + step * y)[0] = 255;
                                 (dataPtr + nChan * x + step * y)[1] = 255;
