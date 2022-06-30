@@ -2671,15 +2671,8 @@ namespace CG_OpenCV
                 warningSign = new List<string[]>();
                 prohibitionSign = new List<string[]>();
 
-                MIplImage m = img.MIplImage;
-                byte* dataPtr = (byte*)m.imageData.ToPointer();
-
                 int width = img.Width;
                 int height = img.Height;
-                int nChan = m.nChannels;
-                int padding = m.widthStep - m.nChannels * m.width;
-                int x, y;
-                int step = m.widthStep;
 
                 // Numbers Import
                 Image[] numberFiles = new Image[10];
@@ -2739,7 +2732,48 @@ namespace CG_OpenCV
                         limitSign.Add(limitSignVector);
                     }
                 }
-                return img;
+
+                drawSquares(imgCopy, warningSign);
+                drawSquares(imgCopy, prohibitionSign);
+                drawSquares(imgCopy, limitSign);
+
+                return imgCopy;
+            }
+        }
+
+        public static void drawSquares(Image<Bgr, byte> img, List<string[]> signList) {
+            unsafe {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                int step = m.widthStep;
+
+                foreach(string[] singleSign in signList) {
+                    int xleft = Int32.Parse(singleSign[1]) - 5;
+                    int ytop = Int32.Parse(singleSign[2]) - 5;
+                    int xright = Int32.Parse(singleSign[3]) + 5;
+                    int ybottom = Int32.Parse(singleSign[4]) + 5;
+
+                    if(singleSign[0] != "-1") {
+                        Console.WriteLine("Velocidade Máxima: " + singleSign[0]);
+                    }
+
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            if((((x >= xleft - 2 && x <= xleft + 2) || (x >= xright - 2 && x <= xright + 2)) && y >= ytop && y <= ybottom) || (((y >= ytop - 2 && y <= ytop + 2) || (y >= ybottom - 2 && y <= ybottom + 2)) && x >= xleft && x <= xright)) {
+                                (dataPtr + nChan * x + step * y)[0] = 14;
+                                (dataPtr + nChan * x + step * y)[1] = 56;
+                                (dataPtr + nChan * x + step * y)[2] = 255;
+                            } 
+                        }
+                    }
+                }
             }
         }
 
@@ -2780,9 +2814,7 @@ namespace CG_OpenCV
 
         public static double[] BGR_To_HSV(double blue, double green, double red) {
             double[] hsv = new double[3];
-            double h = 0.0, 
-                s = 0.0, 
-                v = 0.0;
+            double h = 0.0;
             double max = Math.Max(red, Math.Max(blue, green));
             double min = Math.Min(red, Math.Max(blue, green));
 
